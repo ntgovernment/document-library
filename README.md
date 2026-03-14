@@ -221,13 +221,15 @@ The HTML is rendered server-side by Squiz Matrix. Key Matrix-specific patterns:
 
 Search results are fetched by `src/js/coveo-search.js` (compiled into `dist/search-page.js`).
 
-**Production API — proxy endpoint:**
+**Production API endpoint:**
 
 ```
-./?a=944069&searchterm=ENCODED_QUERY
+https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query?searchterm=ENCODED_QUERY
 ```
 
-The Matrix proxy asset at `./?a=944069` handles all Coveo configuration server-side (scope, result count, partial match, etc.). **Only `searchterm` is accepted as a caller-supplied parameter.** Sending any other query params causes the proxy to return an HTML error page instead of JSON. The underlying Coveo endpoint is `https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query`.
+This is a Squiz Matrix page asset on the same origin (`internal.nt.gov.au`) that returns the Coveo JSON response directly. It accepts only one caller-supplied parameter: `searchterm`. All other Coveo configuration (scope, result count, partial match, etc.) is baked into the Matrix asset server-side.
+
+> **Do not use `?a=<assetId>` shorthand.** The `?a=944069` asset shorthand resolves to the document-search page itself and returns the full page HTML — not the Coveo JSON. This causes a `SyntaxError: Unexpected token '<'` in the fetch pipeline.
 
 Sorting is performed **client-side** via `applySort()` after every fetch and after every sort `<select>` change — no re-fetch is needed. `originalResults` holds the API response order; `allResults` is a sorted copy used for rendering.
 
@@ -436,7 +438,7 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **No Font Awesome in the bundle.** `dist/search-page.css` and `dist/search-page.js` have zero Font Awesome dependencies. All icons are inline SVGs (external-link icon in cards and table) or pure CSS (spinner ring via `@keyframes doc-search-spin`, sort chevron via unicode `▾`, pagination arrows via unicode `‹`/`›`). Font Awesome Pro is still loaded by the Matrix paint layout for the rest of the page — just not needed here.
 
-- **VPN required for production search.** The Matrix proxy asset (`./?a=944069`) proxies to a Coveo endpoint that is only reachable on the NTG network. `coveo-search.js` automatically falls back to the mock JSON when `hostname` is `localhost` or `127.0.0.1`. Do not send extra query params to the proxy — it accepts only `searchterm` and returns HTML (not JSON) for any unrecognised request, which surfaces as a parse error.
+- **VPN required for production search.** The Coveo endpoint (`https://internal.nt.gov.au/...`) is only reachable on the NTG network. `coveo-search.js` automatically falls back to the mock JSON when `hostname` is `localhost` or `127.0.0.1`. Do not use a `?a=<assetId>` Matrix shorthand URL — it resolves to an HTML page, not JSON.
 
 - **Mock data is static.** `src/mock/coveo-search-rest-api-query.json` always returns the same 189 results regardless of the query string. It is a snapshot used purely to exercise the rendering pipeline locally.
 

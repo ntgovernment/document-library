@@ -7,15 +7,12 @@
  * Results are rendered by cloning a hidden .search-template element.
  *
  * ── API ENDPOINT ─────────────────────────────────────────────────────────────
- * Production:  ./?a=944069
- *   Squiz Matrix proxy asset — same-origin request; all Coveo configuration
- *   (scope, numberOfResults, sort criteria, etc.) is baked into the asset
- *   server-side. Only one param is accepted from the caller:
- *     &searchterm=<encoded query>   — omit or empty → returns all documents
- *   Sending any other query params causes the proxy to return an HTML error
- *   page instead of JSON, which will surface as a parse error.
- *   Long-form Coveo URL (as configured inside the Matrix asset):
- *     https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
+ * Production:  https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
+ *   Squiz Matrix page asset — same-origin (internal.nt.gov.au); returns the
+ *   Coveo JSON response directly. Only one param is accepted:
+ *     ?searchterm=<encoded query>   — omit or empty → returns all documents
+ *   Do NOT use the ?a=<assetId> proxy shorthand — that resolves to the
+ *   document-search page itself and returns HTML, not JSON.
  * Dev/local:   /src/mock/coveo-search-rest-api-query.json  (static fixture)
  *
  * Dev detection: window.location.hostname is "localhost" or "127.0.0.1"
@@ -106,7 +103,8 @@
   // ── Environment ──────────────────────────────────────────────────────────────
   var isDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-  var COVEO_BASE_URL = "./?a=944069";
+  var COVEO_BASE_URL =
+    "https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query";
   var MOCK_URL = "/src/mock/coveo-search-rest-api-query.json";
 
   var RESULTS_PER_PAGE_CARD = 10;
@@ -125,7 +123,7 @@
 
   // ── URL builder ──────────────────────────────────────────────────────────────
   function buildCoveoUrl(query) {
-    return COVEO_BASE_URL + "&searchterm=" + encodeURIComponent(query);
+    return COVEO_BASE_URL + "?searchterm=" + encodeURIComponent(query);
   }
 
   function getUrlParam(name) {
@@ -545,32 +543,10 @@
     setUserMessage("");
 
     var url = isDev ? MOCK_URL : buildCoveoUrl(query);
-    console.log("[coveo-search] Fetching:", url);
 
     fetch(url)
       .then(function (res) {
-        var ct = res.headers.get("content-type") || "(none)";
-        console.log(
-          "[coveo-search] Response:",
-          res.status,
-          res.url,
-          "content-type:",
-          ct,
-        );
         if (!res.ok) throw new Error("Search request failed: " + res.status);
-        if (!ct.includes("application/json")) {
-          return res.text().then(function (body) {
-            console.error(
-              "[coveo-search] Non-JSON body (first 500 chars):",
-              body.slice(0, 500),
-            );
-            throw new Error(
-              "Search request failed: response is not JSON (content-type: " +
-                ct +
-                ")",
-            );
-          });
-        }
         return res.json();
       })
       .then(function (data) {
