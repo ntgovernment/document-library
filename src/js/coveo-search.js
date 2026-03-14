@@ -33,8 +33,10 @@
  * result.raw.asseturl                 — primary document URL
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
- * result.raw.resourcecollectionname   — "Category" facet value
- * result.raw.collectionurl            — collection browse URL
+ * result.raw.resourcecollectionname   — "Category" facet value (used as filter key)
+ * result.raw.collectionassetid        — Squiz asset ID; card view uses ./?a=<id> href
+ *                                        and %globals_asset_name:<id>% display text
+ * result.raw.collectionurl            — direct collection URL; table view href only
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
  *
  * ── DOM CONTRACT ─────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@
  *   #doc-search-table-body        <tbody> populated with table rows
  *   #doc-search-results-summary   receives "Showing X–Y of Z results" text
  *   #doc-search-pagination        receives prev/page-number/next buttons
- *   #doc-search-sort-select       <select>; values: relevancy | newest | oldest
+ *   #doc-search-sort-select       <select>; option values: "relevancy" | "date descending" | "date ascending"
  *   #doc-search-view-toggle       button; aria-pressed="true" = table view active
  *   #doc-search-type-filters      <ul> receives Type facet checkboxes
  *   #doc-search-category-filters  <ul> receives Category facet checkboxes
@@ -61,14 +63,33 @@
  *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
  *   [data-ref="search-result-description"]     description / excerpt text
  *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
- *   [data-ref="search-result-collection"]      collection name text
- *   [data-ref="search-result-collection-link"] <a> href = collectionurl
+ *   [data-ref="search-result-collection"]      collection name — %globals_asset_name:<collectionassetid>%
+ *   [data-ref="search-result-collection-link"] <a> href = ./?a=<collectionassetid>
  *   [data-ref="search-result-doctype"]         doctype badge text
  *   [data-ref="search-result-last-updated"]    formatted last-updated date
  *
+ * Table columns (built by renderTableResults into #doc-search-table-body <tr> rows):
+ *   .doc-search-table__col-title       title cell — <a class="doc-search-table__title-link">
+ *   .doc-search-table__col-updated     last-updated plain text
+ *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
+ *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
+ *                                        href = raw.collectionurl (direct Coveo URL)
+ *                                        text = raw.resourcecollectionname (plain string)
+ *                                        NOTE: table view uses collectionurl + plain name;
+ *                                        card view uses ./?a=<collectionassetid> + Squiz keyword
+ *
+ * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
+ *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
+ *   .doc-search-facet-item              <label> wrapper
+ *   .doc-search-facet-item__label       human-readable value text
+ *   .doc-search-facet-item__count       occurrence count "(n)"
+ *   .doc-search-facet-hidden            items beyond MAX_FACET_VISIBLE; removed on "Show all" click
+ *   .doc-search-show-all                "Show all (n)" toggle button; data-facet-container = containerId
+ *
  * ── URL PARAMETERS READ ON INIT ──────────────────────────────────────────────
  *   ?searchterm=<string>  pre-fills #search and immediately runs a search
- *   ?sort=<string>        sets initial sort (relevancy | newest | oldest)
+ *   ?sort=<string>        pre-selects sort; must match a <select> option value:
+ *                           "relevancy" | "date descending" | "date ascending"
  *
  * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
  * On form submit: the handler redirects to
@@ -165,6 +186,13 @@
     );
   }
 
+  /**
+   * Populates a facet <ul> with checkbox items sorted descending by occurrence count.
+   * @param {Array}  results      full result set to count facet values from
+   * @param {string} field        result.raw property name (e.g. "resourcedoctype")
+   * @param {string} containerId  jQuery selector for the target <ul>
+   * @param {Set}    activeSet    currently active filter values; matching checkboxes rendered checked
+   */
   function buildFacet(results, field, containerId, activeSet) {
     // Count occurrences
     var counts = {};
@@ -243,6 +271,9 @@
   }
 
   // ── Apply filters ────────────────────────────────────────────────────────────
+  // Filters allResults into filteredResults using the active facet sets, then
+  // renders page 1. Facets are ANDed; values within a facet are ORed.
+  // An empty set means no filter is applied for that facet (all values pass).
   function applyFilters() {
     filteredResults = allResults.filter(function (r) {
       var raw = r.raw || {};
@@ -281,6 +312,10 @@
   }
 
   // ── Card results ─────────────────────────────────────────────────────────────
+  // Renders results as cloned .search-template <li> cards in #doc-search-results-list.
+  // Collection row is shown only when both resourcecollectionname AND collectionassetid are present:
+  //   href → ./?a=<collectionassetid>                  (Squiz page asset URL)
+  //   text → %globals_asset_name:<collectionassetid>%  (Squiz keyword; resolved server-side)
   function renderCardResults(results) {
     var $list = $("#doc-search-results-list");
     var $template = $(".search-template");
@@ -314,15 +349,12 @@
         .text(raw.resourcedescription || result.excerpt || "");
 
       // Collection row
+      var collectionName = raw.resourcecollectionname || "";
       var collectionAssetId = raw.collectionassetid || "";
-      if (collectionAssetId) {
+      if (collectionName && collectionAssetId) {
         $item
           .find('[data-ref="search-result-collection"]')
-          .html(
-            '<script runat="server">print(`%globals_asset_name:' +
-              collectionAssetId +
-              "%`);<\/script>",
-          );
+          .text("%globals_asset_name:" + collectionAssetId + "%");
         $item
           .find('[data-ref="search-result-collection-link"]')
           .attr("href", "./?a=" + collectionAssetId);
@@ -347,6 +379,9 @@
   }
 
   // ── Table results ─────────────────────────────────────────────────────────────
+  // Renders results as <tr> rows in #doc-search-table-body.
+  // Collection link uses raw.collectionurl directly — unlike card view which uses
+  // the ./?a=<collectionassetid> href and %globals_asset_name% Squiz keyword.
   function renderTableResults(results) {
     var $tbody = $("#doc-search-table-body");
     $tbody.empty();
@@ -487,6 +522,9 @@
     $nav.append($next);
   }
 
+  // Returns a mixed array of page numbers (Number) and gap markers ("…") for the
+  // pagination bar. Always includes page 1, the last page, and current ±1; inserts
+  // "…" where the gap is larger than one page. Returns a full range when total ≤ 7.
   function buildPageRange(current, total) {
     if (total <= 7) {
       return range(1, total);
@@ -514,12 +552,15 @@
   }
 
   // ── HTML helpers ─────────────────────────────────────────────────────────────
+  // escHtml  — encodes a plain string for safe insertion as HTML text content.
   function escHtml(str) {
     return $("<span>")
       .text(str || "")
       .html();
   }
 
+  // escAttr  — encodes a plain string for safe use inside an HTML attribute value.
+  //            Extends escHtml by also escaping " and ' characters.
   function escAttr(str) {
     return $("<span>")
       .text(str || "")
@@ -529,6 +570,12 @@
   }
 
   // ── Core search ──────────────────────────────────────────────────────────────
+  // Fetches from the Coveo API (or mock fixture in dev mode), then calls:
+  //   applySort()    — orders allResults based on currentSort
+  //   buildFilters() — rebuilds facet checkboxes from the full result set
+  //   applyFilters() — applies active facet filters and renders page 1
+  // Existing filter/sort state is preserved across calls — clear activeTypeFilters /
+  // activeCategoryFilters before calling if a clean filter slate is needed.
   function runSearch(query) {
     currentQuery = query;
 
