@@ -545,10 +545,32 @@
     setUserMessage("");
 
     var url = isDev ? MOCK_URL : buildCoveoUrl(query);
+    console.log("[coveo-search] Fetching:", url);
 
     fetch(url)
       .then(function (res) {
+        var ct = res.headers.get("content-type") || "(none)";
+        console.log(
+          "[coveo-search] Response:",
+          res.status,
+          res.url,
+          "content-type:",
+          ct,
+        );
         if (!res.ok) throw new Error("Search request failed: " + res.status);
+        if (!ct.includes("application/json")) {
+          return res.text().then(function (body) {
+            console.error(
+              "[coveo-search] Non-JSON body (first 500 chars):",
+              body.slice(0, 500),
+            );
+            throw new Error(
+              "Search request failed: response is not JSON (content-type: " +
+                ct +
+                ")",
+            );
+          });
+        }
         return res.json();
       })
       .then(function (data) {
