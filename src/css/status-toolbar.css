@@ -1,0 +1,129 @@
+    #ntgc-status--toolbar-wrapper {
+        display:block !important;
+    }    
+    
+    .ntgc-status--toolbar-container {
+        position: fixed;
+        right: -50px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 9999;
+    }
+
+    .ntgc-status--toolbar-icon-toggle {
+        margin-top: 5px;
+    }
+
+    .ntgc-page--status {
+        display: none;
+    }
+
+    .ntgc-status--toolbar-tab--safe {
+        background-color: #f9d4dd;
+    }
+
+    .ntgc-status--toolbar-tab--safe:hover {
+        background-color: #F5B7C7;
+    }
+
+    .ntgc-status--toolbar-tab--construction {
+        background-color: #d3e8f6;
+    }
+
+    .ntgc-status--toolbar-tab--construction:hover {
+        background-color: #AAD3EE;
+    }
+
+
+    .ntgc-status--toolbar-tab--live {
+        background-color: #e4f1a5;
+    }
+
+    .ntgc-status--toolbar-tab--live:hover {
+        background-color: #DAEC83;
+    }
+
+    .ntgc-status--toolbar-tab--archive {
+        background-color: #e6d0c3;
+    }
+
+    .ntgc-status--toolbar-tab--archive:hover {
+        background-color: #DBBBA9;
+    }
+    
+    .ntgc-status--toolbar-tab--default {
+        background-color: #feffcb;
+    }   
+    
+    .ntgc-status--toolbar-tab--default:hover {
+        background-color: #feffb2;
+    }     
+
+    .ntgc-status--toolbar-tab {
+        cursor: pointer;
+        font-size: 16px;
+        padding: 10px 18px;
+        position: relative;
+        text-align: center;
+        transition: all 0.2s ease-in-out;
+        width: 120px;
+        transform: rotate(90deg);
+        /* transform-origin: left top; */
+        width: 170px;
+        /* height: 20px; */
+        position: fixed;
+        right: 0;
+        top: 50%;
+        margin-top: -180px;
+        margin-right: -33px;
+        font-family: "Roboto", arial, sans-serif;
+    }
+
+    .ntgc-status--toolbar {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        position: absolute;
+        right: -240px;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: all 0.2s ease-in-out;
+        width: 240px;
+    }
+
+    .ntgc-status--toolbar ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .ntgc-status--toolbar ul li {
+        border-bottom: 1px solid #ccc;
+    }
+
+    .ntgc-status--toolbar ul li:last-child {
+        border-bottom: none;
+    }
+
+    .ntgc-status--toolbar ul li a {
+        color: #333;
+        display: block;
+        font-size: 18px;
+        padding: 8px 16px;
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        font-family: "Roboto", arial, sans-serif;
+    }
+
+    .ntgc-status--toolbar ul li a:hover {
+        background-color: #f5f5f5;
+    }
+
+
+    /* Media query to hide the ntgc-status--toolbar on small screens */
+    @media screen and (max-width: 767px) {
+        .ntgc-status--toolbar-container {
+            display: none !important;
+        }
+    }
