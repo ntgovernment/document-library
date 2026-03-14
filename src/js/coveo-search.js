@@ -8,23 +8,25 @@
  *
  * ── API ENDPOINT ─────────────────────────────────────────────────────────────
  * Production:  ./?a=944069
- *   Squiz Matrix proxy asset — same-origin, forwards all query params
- *   server-side to the Coveo REST API (avoids CORS).
- *   Long-form URL: https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
+ *   Squiz Matrix proxy asset — same-origin request; all Coveo configuration
+ *   (scope, numberOfResults, sort criteria, etc.) is baked into the asset
+ *   server-side. Only one param is accepted from the caller:
+ *     &searchterm=<encoded query>   — omit or empty → returns all documents
+ *   Sending any other query params causes the proxy to return an HTML error
+ *   page instead of JSON, which will surface as a parse error.
+ *   Long-form Coveo URL (as configured inside the Matrix asset):
+ *     https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
  * Dev/local:   /src/mock/coveo-search-rest-api-query.json  (static fixture)
  *
  * Dev detection: window.location.hostname is "localhost" or "127.0.0.1"
  *
- * Query params sent to the API (see buildCoveoUrl):
- *   q                     — search term; empty string returns all documents
- *   scope                 — Coveo collection scope ID: 28319
- *   numberOfResults       — always 1000 (fetch all; pagination is client-side)
- *   SortCriteria          — "relevancy" | "date descending" | "date ascending"
- *   enableDidYouMean      — true
- *   partialMatch          — true
- *   partialMatchKeywords  — 2
- *   partialMatchThreshold — 2
- *   maximumAge            — 1
+ * Sorting is performed client-side after the full result set is received:
+ *   applySort() is called after every fetch and after every sort <select> change.
+ *   "relevancy"        — preserves the original API response order (originalResults)
+ *   "date descending"  — sorts allResults by raw.resourceupdated descending
+ *   "date ascending"   — sorts allResults by raw.resourceupdated ascending
+ *   raw.resourceupdated format is "YYYY-MM-DD HH:mm:ss"; lexicographic comparison
+ *   produces the correct chronological order for that format.
  *
  * ── COVEO RESULT FIELDS USED ─────────────────────────────────────────────────
  * result.title                        — fallback title
@@ -83,6 +85,16 @@
  *   RESULTS_PER_PAGE_TABLE  15  — rows shown per page in table view
  *   MAX_FACET_VISIBLE        5  — facet items visible before "Show all"
  *
+ * ── MODULE STATE ─────────────────────────────────────────────────────────────
+ *   originalResults  Array   — raw API response order; restored on "relevancy" sort
+ *   allResults       Array   — current display order (sorted copy of originalResults)
+ *   filteredResults  Array   — subset of allResults after checkbox filters applied
+ *   currentPage      Number  — active pagination page (1-based)
+ *   activeTypeFilters     Set  — checked "Type" facet values
+ *   activeCategoryFilters Set  — checked "Category" facet values
+ *   currentSort      String  — "relevancy" | "date descending" | "date ascending"
+ *   currentQuery     String  — last query passed to runSearch()
+ *
  * ── DEPENDENCIES ─────────────────────────────────────────────────────────────
  *   jQuery (window.$)  — must be loaded before this script executes
  *   moment.js          — optional; dates fall back to raw string if absent
@@ -102,6 +114,7 @@
   var MAX_FACET_VISIBLE = 5;
 
   // ── Module state ─────────────────────────────────────────────────────────────
+  var originalResults = []; // API response order — restored when sort = relevancy
   var allResults = [];
   var filteredResults = [];
   var currentPage = 1;
@@ -111,19 +124,8 @@
   var currentQuery = "";
 
   // ── URL builder ──────────────────────────────────────────────────────────────
-  function buildCoveoUrl(query, sort) {
-    var params = new URLSearchParams({
-      enableDidYouMean: "true",
-      partialMatch: "true",
-      partialMatchKeywords: "2",
-      partialMatchThreshold: "2",
-      scope: "28319",
-      numberOfResults: "1000",
-      SortCriteria: sort || "relevancy",
-      maximumAge: "1",
-      q: query,
-    });
-    return COVEO_BASE_URL + "&" + params.toString();
+  function buildCoveoUrl(query) {
+    return COVEO_BASE_URL + "&searchterm=" + encodeURIComponent(query);
   }
 
   function getUrlParam(name) {
@@ -224,6 +226,21 @@
           "</button></li>",
       );
       $container.append($showAll);
+    }
+  }
+
+  // ── Sort ─────────────────────────────────────────────────────────────────────
+  function applySort() {
+    if (currentSort === "relevancy") {
+      allResults = originalResults.slice();
+    } else {
+      allResults = originalResults.slice().sort(function (a, b) {
+        var da = (a.raw || {}).resourceupdated || "";
+        var db = (b.raw || {}).resourceupdated || "";
+        return currentSort === "date descending"
+          ? db.localeCompare(da)
+          : da.localeCompare(db);
+      });
     }
   }
 
@@ -527,7 +544,7 @@
     $summary.empty();
     setUserMessage("");
 
-    var url = isDev ? MOCK_URL : buildCoveoUrl(query, currentSort);
+    var url = isDev ? MOCK_URL : buildCoveoUrl(query);
 
     fetch(url)
       .then(function (res) {
@@ -536,7 +553,8 @@
       })
       .then(function (data) {
         $spinner.addClass("d-none");
-        allResults = data.results || [];
+        originalResults = data.results || [];
+        applySort();
 
         if (allResults.length === 0) {
           setUserMessage(
@@ -588,10 +606,8 @@
   // ── Event: sort change ───────────────────────────────────────────────────────
   $(document).on("change", "#doc-search-sort-select", function () {
     currentSort = $(this).val();
-    // Re-fetch with new sort; clear active filters so they get rebuilt
-    activeTypeFilters.clear();
-    activeCategoryFilters.clear();
-    runSearch(currentQuery);
+    applySort();
+    applyFilters();
   });
 
   // ── Event: view toggle ───────────────────────────────────────────────────────
