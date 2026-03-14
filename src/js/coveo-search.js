@@ -34,9 +34,10 @@
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
  * result.raw.resourcecollectionname   — "Category" facet value (used as filter key)
- * result.raw.collectionassetid        — Squiz asset ID; card view uses ./?a=<id> href
- *                                        and %globals_asset_name:<id>% display text
- * result.raw.collectionurl            — direct collection URL; table view href only
+ * result.raw.collectionname           — human-readable collection name; used as card view display text
+ *                                        NOTE: table view uses resourcecollectionname instead
+ * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
+ * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
  *
  * ── DOM CONTRACT ─────────────────────────────────────────────────────────────
@@ -63,8 +64,8 @@
  *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
  *   [data-ref="search-result-description"]     description / excerpt text
  *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
- *   [data-ref="search-result-collection"]      collection name — %globals_asset_name:<collectionassetid>%
- *   [data-ref="search-result-collection-link"] <a> href = ./?a=<collectionassetid>
+ *   [data-ref="search-result-collection"]      collection name text (raw.collectionname)
+ *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl
  *   [data-ref="search-result-doctype"]         doctype badge text
  *   [data-ref="search-result-last-updated"]    formatted last-updated date
  *
@@ -73,10 +74,10 @@
  *   .doc-search-table__col-updated     last-updated plain text
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
  *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
- *                                        href = raw.collectionurl (direct Coveo URL)
- *                                        text = raw.resourcecollectionname (plain string)
- *                                        NOTE: table view uses collectionurl + plain name;
- *                                        card view uses ./?a=<collectionassetid> + Squiz keyword
+ *                                        href = raw.collectionurl
+ *                                        text = raw.resourcecollectionname
+ *                                        NOTE: table uses resourcecollectionname (facet key) for display;
+ *                                        card view uses raw.collectionname instead
  *
  * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
  *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
@@ -313,9 +314,9 @@
 
   // ── Card results ─────────────────────────────────────────────────────────────
   // Renders results as cloned .search-template <li> cards in #doc-search-results-list.
-  // Collection row is shown only when both resourcecollectionname AND collectionassetid are present:
-  //   href → ./?a=<collectionassetid>                  (Squiz page asset URL)
-  //   text → %globals_asset_name:<collectionassetid>%  (Squiz keyword; resolved server-side)
+  // Collection row is shown only when both collectionname AND collectionurl are present:
+  //   href → raw.collectionurl   (direct collection page URL)
+  //   text → raw.collectionname  (human-readable collection name)
   function renderCardResults(results) {
     var $list = $("#doc-search-results-list");
     var $template = $(".search-template");
@@ -349,15 +350,15 @@
         .text(raw.resourcedescription || result.excerpt || "");
 
       // Collection row
-      var collectionName = raw.resourcecollectionname || "";
-      var collectionAssetId = raw.collectionassetid || "";
-      if (collectionName && collectionAssetId) {
+      var collectionName = raw.collectionname || "";
+      var collectionUrl = raw.collectionurl || "";
+      if (collectionName && collectionUrl) {
         $item
           .find('[data-ref="search-result-collection"]')
           .text(collectionName);
         $item
           .find('[data-ref="search-result-collection-link"]')
-          .attr("href", "./?a=" + collectionAssetId);
+          .attr("href", collectionUrl);
       } else {
         $item
           .find('[data-ref="search-result-collection-row"]')
@@ -380,8 +381,10 @@
 
   // ── Table results ─────────────────────────────────────────────────────────────
   // Renders results as <tr> rows in #doc-search-table-body.
-  // Collection link uses raw.collectionurl directly — unlike card view which uses
-  // the ./?a=<collectionassetid> href and %globals_asset_name% Squiz keyword.
+  // Collection cell: href = raw.collectionurl; text = raw.resourcecollectionname.
+  // Unlike card view which uses raw.collectionname for display text,
+  // table view re-uses the facet key (resourcecollectionname) so the displayed
+  // name matches the Category filter labels exactly.
   function renderTableResults(results) {
     var $tbody = $("#doc-search-table-body");
     $tbody.empty();
