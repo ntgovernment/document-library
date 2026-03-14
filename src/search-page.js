@@ -1,35 +1,29 @@
 /**
- * search-page.js — DCDD Document Search page bundle entry point
+ * search-page.js — DCDD Document Search: Vite bundle entry point
  *
- * This file is the Vite build entry point. Running `npm run build` from the
- * project root compiles everything imported here into two files:
+ * ── BUILD ─────────────────────────────────────────────────────────────────────
+ *   npm run build
+ *     → dist/search-page.js   IIFE script (all search JS)
+ *     → dist/search-page.css  all search CSS
  *
- *   dist/search-page.js   → referenced in the Squiz Matrix paint layout as <script>
- *   dist/search-page.css  → referenced in the Squiz Matrix paint layout as <link>
+ * ── DEPLOYMENT ───────────────────────────────────────────────────────────────
+ *   Both dist/ files are committed to git. Git File Bridge syncs them into
+ *   Squiz Matrix automatically on push. Do NOT add dist/ to .gitignore.
+ *   The Matrix paint layout references:
+ *     <script src="...\/dist\/search-page.js"><\/script>
+ *     <link rel="stylesheet" href="...\/dist\/search-page.css">
  *
- * Both dist/ files are committed to git so that Git File Bridge can sync them
- * into Matrix automatically on push. Do NOT add dist/ to .gitignore.
+ * ── BUNDLE FORMAT ────────────────────────────────────────────────────────────
+ *   IIFE — runs as a plain <script> tag, no module loader required.
+ *   jQuery must already be on the page before this script executes.
  *
- * BUNDLE FORMAT: IIFE (Immediately Invoked Function Expression)
- *   The bundle runs as a plain <script> tag — no module loader required.
- *   jQuery MUST already be on the page (loaded by the paint layout) before
- *   this script executes. All four JS files below rely on $ / jQuery as globals.
- *
- * WHAT IS NOT IN THIS BUNDLE (loaded separately by the Matrix page template):
- *   - jQuery, SumoSelect, Fotorama, AUDS, NTG Central profile sync  (vendor/js/)
- *   - Font Awesome, Roboto, Fotorama CSS                              (vendor/css/)
- *   - Coveo search engine, pagination, moment.js                      (live CDN)
- *   - Google Tag Manager                                              (gtm.js)
- *
- * TO ADD A FILE TO THE BUNDLE: add an import statement below, then run
- *   npm run build   and commit both src/ and dist/ changes together.
+ * ── ADDING FILES ─────────────────────────────────────────────────────────────
+ *   Add an import statement below, run npm run build, then commit
+ *   both src/ and dist/ changes together.
  */
 
-// ── CSS ───────────────────────────────────────────────────────────────────────
-// main.css and status-toolbar.css are loaded by the Matrix page template — not bundled here
+// ── Search CSS ────────────────────────────────────────────────────────────────
 import "./css/search-widget.css";
 
 // ── Search JS ─────────────────────────────────────────────────────────────────
-// components.js, global-v2.js, profile-menu.js, status-toolbar.js are loaded
-// by the Matrix page template — not bundled here
 import "./js/coveo-search.js";

@@ -1,18 +1,84 @@
 /**
  * coveo-search.js — DCDD Document Search: Coveo REST API integration
  *
- * Fetches results from the Coveo Search REST API (production) or local mock
- * data (dev), then renders them into the page using the .search-template clone
- * pattern. Supports card/table view toggle, client-side Type + Category filters,
- * sort-by (re-fetches from Coveo), and paginated results.
+ * ── OVERVIEW ─────────────────────────────────────────────────────────────────
+ * Fetches all matching documents from the Coveo Search REST API in a single
+ * request, then performs client-side filtering, sorting, and pagination.
+ * Results are rendered by cloning a hidden .search-template element.
  *
- * Dev detection: hostname is localhost or 127.0.0.1
- * Mock data:     /src/mock/coveo-search-rest-api-query.json
- * Production:    https://search-internal.nt.gov.au/Coveo/rest?...&q=QUERY
+ * ── API ENDPOINT ─────────────────────────────────────────────────────────────
+ * Production:  ./?a=944069
+ *   Squiz Matrix proxy asset — same-origin, forwards all query params
+ *   server-side to the Coveo REST API (avoids CORS).
+ *   Long-form URL: https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
+ * Dev/local:   /src/mock/coveo-search-rest-api-query.json  (static fixture)
  *
- * Dependencies (loaded separately by the Matrix paint layout or preview page):
- *   - jQuery (window.$)
- *   - moment.js (optional — dates fall back to raw string if unavailable)
+ * Dev detection: window.location.hostname is "localhost" or "127.0.0.1"
+ *
+ * Query params sent to the API (see buildCoveoUrl):
+ *   q                     — search term; empty string returns all documents
+ *   scope                 — Coveo collection scope ID: 28319
+ *   numberOfResults       — always 1000 (fetch all; pagination is client-side)
+ *   SortCriteria          — "relevancy" | "date descending" | "date ascending"
+ *   enableDidYouMean      — true
+ *   partialMatch          — true
+ *   partialMatchKeywords  — 2
+ *   partialMatchThreshold — 2
+ *   maximumAge            — 1
+ *
+ * ── COVEO RESULT FIELDS USED ─────────────────────────────────────────────────
+ * result.title                        — fallback title
+ * result.clickUri                     — fallback URL
+ * result.excerpt                      — fallback description
+ * result.raw.resourcefriendlytitle    — display title
+ * result.raw.asseturl                 — primary document URL
+ * result.raw.resourcedescription      — card/table description
+ * result.raw.resourcedoctype          — "Type" facet value and tag label
+ * result.raw.resourcecollectionname   — "Category" facet value
+ * result.raw.collectionurl            — collection browse URL
+ * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
+ *
+ * ── DOM CONTRACT ─────────────────────────────────────────────────────────────
+ * IDs and attributes that must exist in the page HTML:
+ *
+ *   #search                       text input — holds the search query
+ *   #policy-search-form           form element (optional); submit triggers search
+ *   #initialLoadingSpinner        shown/hidden via .d-none during fetch
+ *   #doc-search-results-col       wrapper; data-view="card" | "table"
+ *   #doc-search-results-list      <ul> populated with card results
+ *   #doc-search-table-body        <tbody> populated with table rows
+ *   #doc-search-results-summary   receives "Showing X–Y of Z results" text
+ *   #doc-search-pagination        receives prev/page-number/next buttons
+ *   #doc-search-sort-select       <select>; values: relevancy | newest | oldest
+ *   #doc-search-view-toggle       button; aria-pressed="true" = table view active
+ *   #doc-search-type-filters      <ul> receives Type facet checkboxes
+ *   #doc-search-category-filters  <ul> receives Category facet checkboxes
+ *   #doc-search-user-message      receives error / no-results message strings
+ *   .search-template[hidden]      card template element, cloned per result
+ *
+ * Card template data-ref slots (inside .search-template):
+ *   [data-ref="search-result-link"]            <a> href = asseturl
+ *   [data-ref="search-result-title"]           document title text
+ *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
+ *   [data-ref="search-result-description"]     description / excerpt text
+ *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
+ *   [data-ref="search-result-collection"]      collection name text
+ *   [data-ref="search-result-collection-link"] <a> href = collectionurl
+ *   [data-ref="search-result-doctype"]         doctype badge text
+ *   [data-ref="search-result-last-updated"]    formatted last-updated date
+ *
+ * ── URL PARAMETERS READ ON INIT ──────────────────────────────────────────────
+ *   ?query=<string>   pre-fills #search and immediately runs a search
+ *   ?sort=<string>    sets initial sort (relevancy | newest | oldest)
+ *
+ * ── KEY CONSTANTS ────────────────────────────────────────────────────────────
+ *   RESULTS_PER_PAGE_CARD   10  — cards shown per page
+ *   RESULTS_PER_PAGE_TABLE  15  — rows shown per page in table view
+ *   MAX_FACET_VISIBLE        5  — facet items visible before "Show all"
+ *
+ * ── DEPENDENCIES ─────────────────────────────────────────────────────────────
+ *   jQuery (window.$)  — must be loaded before this script executes
+ *   moment.js          — optional; dates fall back to raw string if absent
  */
 
 (function ($) {
@@ -21,7 +87,7 @@
   // ── Environment ──────────────────────────────────────────────────────────────
   var isDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-  var COVEO_BASE_URL = "https://search-internal.nt.gov.au/Coveo/rest";
+  var COVEO_BASE_URL = "./?a=944069";
   var MOCK_URL = "/src/mock/coveo-search-rest-api-query.json";
 
   var RESULTS_PER_PAGE_CARD = 10;
