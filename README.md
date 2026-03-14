@@ -238,7 +238,9 @@ https://search-internal.nt.gov.au/Coveo/rest
 
 > **VPN required in production.** `search-internal.nt.gov.au` is only reachable on the NTG network. `coveo-search.js` automatically switches to the mock JSON file when `window.location.hostname` is `localhost` or `127.0.0.1`.
 
-**Behaviour on page load:** `coveo-search.js` fires `runSearch()` unconditionally on `$(document).ready`. It reads `?query=` and `?sort=` from the URL and pre-fills `#search` accordingly. The search form submit handler is attached only if `#policy-search-form` is present — its absence does not block results from loading.
+**Behaviour on page load:** `coveo-search.js` fires `runSearch()` unconditionally on `$(document).ready`. It reads `?searchterm=` and `?sort=` from the URL and pre-fills `#search` accordingly. The search form submit handler is attached only if `#policy-search-form` is present — its absence does not block results from loading.
+
+**Search flow (submit → redirect → load):** When the form is submitted, the handler does **not** call `runSearch()` in-place. Instead it redirects to `window.location.pathname + "?searchterm=" + encodeURIComponent(query)`. The resulting page load reads `?searchterm=` and calls `runSearch()` via the normal init path. This keeps the URL bookmarkable and shareable with a single source of truth for the active query.
 
 **Module state (inside the IIFE):**
 
@@ -302,7 +304,7 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 | ID                            | Purpose                                              |
 | ----------------------------- | ---------------------------------------------------- |
 | `#policy-search-form`         | Search form — submit triggers `runSearch()`          |
-| `#search`                     | Free-text input (`name="query"`)                     |
+| `#search`                     | Free-text input (`name="query"`); pre-filled from `?searchterm=` URL param |
 | `#doc-search-results-col`     | Results column; `data-view` attr controls card/table |
 | `#initialLoadingSpinner`      | Shown during fetch; hidden on response               |
 | `#doc-search-user-message`    | Error / no-results message                           |
@@ -446,7 +448,7 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **Sort resets filters.** Changing the sort `<select>` clears `activeTypeFilters` and `activeCategoryFilters` and re-fetches from Coveo. This is intentional — filters are rebuilt from the new result set returned by the API.
 
-- **`runSearch()` fires unconditionally.** The `$(document).ready` handler calls `runSearch()` regardless of whether `#policy-search-form` exists on the page. The form submit handler is wired up separately, only if `#policy-search-form` is found. This allows the results area to work as a standalone nested container without needing the form on the same page load.
+- **`runSearch()` fires unconditionally.** The `$(document).ready` handler calls `runSearch()` regardless of whether `#policy-search-form` exists on the page. The form submit handler is wired up separately, only if `#policy-search-form` is found — and it **redirects** to `?searchterm=<encoded_query>` rather than calling `runSearch()` directly. The redirect triggers a fresh page load which re-enters via the init path. This allows the results area to work as a standalone nested container without needing the form on the same page load, and keeps the URL bookmarkable.
 
 - **`moment.js` is optional.** `formatDate()` checks `window.moment` before calling it. If moment is not available, the raw date string from `raw.resourceupdated` is displayed as-is.
 

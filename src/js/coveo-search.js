@@ -68,8 +68,15 @@
  *   [data-ref="search-result-last-updated"]    formatted last-updated date
  *
  * ── URL PARAMETERS READ ON INIT ──────────────────────────────────────────────
- *   ?query=<string>   pre-fills #search and immediately runs a search
- *   ?sort=<string>    sets initial sort (relevancy | newest | oldest)
+ *   ?searchterm=<string>  pre-fills #search and immediately runs a search
+ *   ?sort=<string>        sets initial sort (relevancy | newest | oldest)
+ *
+ * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
+ * On form submit: the handler redirects to
+ *   window.location.pathname + "?searchterm=" + encodeURIComponent(query)
+ * This triggers a fresh page load, which then reads ?searchterm= above.
+ * runSearch() is therefore always driven by the URL parameter, never called
+ * directly from the submit handler.
  *
  * ── KEY CONSTANTS ────────────────────────────────────────────────────────────
  *   RESULTS_PER_PAGE_CARD   10  — cards shown per page
@@ -116,7 +123,7 @@
       maximumAge: "1",
       q: query,
     });
-    return COVEO_BASE_URL + "?" + params.toString();
+    return COVEO_BASE_URL + "&" + params.toString();
   }
 
   function getUrlParam(name) {
@@ -606,7 +613,7 @@
   // ── Init ─────────────────────────────────────────────────────────────────────
   $(document).ready(function () {
     // Read initial state from URL params
-    var initialQuery = getUrlParam("query") || "";
+    var initialQuery = getUrlParam("searchterm") || "";
     var urlSort = getUrlParam("sort");
 
     if (urlSort) {
@@ -626,9 +633,8 @@
       $form.on("submit", function (e) {
         e.preventDefault();
         var query = $.trim($("#search").val());
-        activeTypeFilters.clear();
-        activeCategoryFilters.clear();
-        runSearch(query);
+        window.location.href =
+          window.location.pathname + "?searchterm=" + encodeURIComponent(query);
       });
     }
   });
