@@ -354,7 +354,7 @@
       if (collectionName && collectionAssetId) {
         $item
           .find('[data-ref="search-result-collection"]')
-          .text("%globals_asset_name:" + collectionAssetId + "%");
+          .text(collectionName);
         $item
           .find('[data-ref="search-result-collection-link"]')
           .attr("href", "./?a=" + collectionAssetId);
