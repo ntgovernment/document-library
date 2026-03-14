@@ -1,3 +1,20 @@
+# CMS snapshot (saved locally for dev reference only — not committed)
+Document search _ DCDD intranet.html
+Document search _ DCDD intranet_files/
+
+# src/ is intentionally tracked — edit files there and deploy via Git File Bridge
+# src/js/        → NTG first-party scripts
+# src/css/       → NTG first-party stylesheets
+# src/vendor/js/ → third-party scripts (locked versions)
+# src/vendor/css/→ third-party stylesheets (locked versions)
+
+# Dependencies & build output
+node_modules/
+
+# dist/ is intentionally NOT ignored — Git File Bridge reads dist/search-page.js
+# and dist/search-page.css from the repository and syncs them into Squiz Matrix.
+# Always commit dist/ together with src/ changes after running npm run build.
+
 # Logs
 logs
 *.log
