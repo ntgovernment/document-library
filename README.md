@@ -17,18 +17,15 @@ The page provides staff with a filterable, full-text search interface over DCDD 
 ```
  GitHub repo (this)                Squiz Matrix (production CMS)
  ──────────────────                ─────────────────────────────
- src/js/*.js    ─┐                 Paint Layout
- src/css/*.css  ─┤─ npm run build  ├── <link>   search-page.css  ←─── dist/search-page.css
-                 └──────────────► dist/ ──── Git File Bridge ──────── dist/search-page.js
-                                  └── search-section.html  ←───────── dist/search-section.html
-                                                                            │
-                                  Page / Nested Container (HTML)            │
-                                  ├── Search section (nested container) ───┘
-                                  ├── Coveo results area
-                                  └── <script> search-page.js
+ src/css/search-widget.css ─┐      Paint Layout
+ src/js/coveo-search.js    ─┤      ├── <link>  search-page.css  ←── dist/search-page.css
+                             ├─ npm run build                    ←── dist/search-page.js
+                             └──────────────► dist/ ── Git File Bridge
+                                              ├── search-section.html  → Nested container 1 (form)
+                                              └── search-results.html  → Nested container 2 (results)
 ```
 
-**Key rule for agents and developers:** Edit source files in `src/js/`, `src/css/`, or `src/search-section.html`, then run `npm run build`. Always commit **both** `src/` changes and the regenerated `dist/` files together — the `dist/` files are what Git File Bridge delivers to Matrix.
+**Key rule for agents and developers:** Edit source files in `src/js/`, `src/css/`, `src/search-section.html`, or `src/search-results.html`, then run `npm run build`. Always commit **both** `src/` changes and the regenerated `dist/` files together — the `dist/` files are what Git File Bridge delivers to Matrix.
 
 ---
 
@@ -38,15 +35,16 @@ The page provides staff with a filterable, full-text search interface over DCDD 
 
 **Files deployed to Matrix:**
 
-| Local path                   | Matrix asset          | Used by                                              |
-| ---------------------------- | --------------------- | ---------------------------------------------------- |
-| `dist/search-page.js`        | `search-page.js`      | Paint layout `<script>`                              |
-| `dist/search-page.css`       | `search-page.css`     | Paint layout `<link>`                                |
-| `dist/search-section.html`   | `search-section.html` | Squiz Matrix nested container (search input section) |
+| Local path                  | Matrix asset           | Used by                                                           |
+| --------------------------- | ---------------------- | ----------------------------------------------------------------- |
+| `dist/search-page.js`       | `search-page.js`       | Paint layout `<script>` (after jQuery)                            |
+| `dist/search-page.css`      | `search-page.css`      | Paint layout `<link>`                                             |
+| `dist/search-section.html`  | `search-section.html`  | Squiz Matrix nested container — search form                       |
+| `dist/search-results.html`  | `search-results.html`  | Squiz Matrix nested container — results area, filters, pagination |
 
 **`dist/` is intentionally committed to git.** Git File Bridge reads from the repository, so the built output must be present in the commit. It is **not** in `.gitignore`.
 
-The HTML template and vendor/third-party scripts are managed separately inside Matrix and are not deployed via this repository.
+The HTML page template and vendor/third-party scripts are managed separately inside Matrix and are not deployed via this repository.
 
 ### Paint layout references
 
@@ -60,14 +58,16 @@ The HTML template and vendor/third-party scripts are managed separately inside M
 
 > **jQuery dependency:** The paint layout must load jQuery **before** `search-page.js`. The bundle is IIFE format and expects `$` / `jQuery` to be available as globals.
 
-### Nested container
+### Nested containers (HTML fragments)
 
-`dist/search-section.html` is a **bare HTML fragment** (no `<!DOCTYPE>`, `<html>`, `<head>`, or `<body>` tags). It is pasted directly into a Squiz Matrix nested container asset that is included inside the page template. The paint layout already loads `search-page.css` and `search-page.js`, so the fragment needs no additional asset references.
+Both `dist/search-section.html` and `dist/search-results.html` are **bare HTML fragments** (no `<!DOCTYPE>`, `<html>`, `<head>`, or `<body>` tags). Each is pasted into a separate Squiz Matrix nested container asset on the document search page. The paint layout already loads `search-page.css` and `search-page.js`, so the fragments need no additional asset references.
 
-To update the search input markup:
-1. Edit `src/search-section.html`
-2. Run `npm run build` — the fragment is copied automatically to `dist/search-section.html`
-3. Commit `src/search-section.html` + `dist/search-section.html`
+| Fragment                   | Source                    | Matrix placement                  |
+| -------------------------- | ------------------------- | --------------------------------- |
+| `dist/search-section.html` | `src/search-section.html` | Nested container above main body  |
+| `dist/search-results.html` | `src/search-results.html` | Nested container in main body     |
+
+Both files are copied verbatim from `src/` to `dist/` by the `copy-search-section` Vite plugin — no transformation occurs.
 
 ---
 
@@ -87,21 +87,27 @@ npm run dev     # Vite dev server at http://localhost:3000 with HMR
 npm run preview # serve the dist/ build locally for final checks
 ```
 
-`npm run dev` opens `search-section-preview.html` automatically. This is a **standalone preview page** that wraps the search fragment with the results area and a hidden result template, so you can test the full search interaction locally against mock data without needing VPN or CMS access.
+`npm run dev` opens `search-section-preview.html` automatically. This is a **full-fidelity preview page** generated from the production CMS snapshot (`Document search _ DCDD intranet.html`). It includes the real Matrix page chrome (header, nav, footer) and references `./dist/search-page.css` and `./dist/search-page.js` locally, so you can test the complete search interaction without VPN or CMS access.
 
-For the full CMS page snapshot in dev you also need (gitignored — obtained separately):
+**HMR is active** — edits to any file in `src/` rebuild and reload the browser instantly.
 
-- `Document search _ DCDD intranet.html` — place in project root
+### Mock data vs production API
 
-Vite serves both and **HMR is active** — edits to any file in `src/` reload the browser instantly without a full page refresh.
+| Environment               | Data source                                                              |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `localhost` / `127.0.0.1` | `src/mock/coveo-search-rest-api-query.json` (189 results, no VPN needed) |
+| All other hostnames       | Live Coveo REST API at `search-internal.nt.gov.au`                       |
+
+The mock JSON always returns the same 189 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
 
 ### Standard change workflow
 
 ```bash
 # 1. Edit source files
 code src/js/coveo-search.js
-code src/css/main.css
+code src/css/search-widget.css
 code src/search-section.html
+code src/search-results.html
 
 # 2. Preview changes interactively (HMR on search-section-preview.html)
 npm run dev
@@ -118,7 +124,14 @@ git push
 
 ### Build entry point
 
-[`src/search-page.js`](src/search-page.js) is the Vite entry point. It imports all first-party CSS and JS. **Edit the imports there** to add or remove files from the bundle. The output filenames are fixed (no content hashes) so Matrix file asset URLs remain stable across builds.
+[`src/search-page.js`](src/search-page.js) is the Vite entry point. It imports only two files:
+
+```js
+import "./css/search-widget.css";  // widget styles (compiled → dist/search-page.css)
+import "./js/coveo-search.js";     // search logic  (compiled → dist/search-page.js)
+```
+
+**Edit the imports there** to add or remove files from the bundle. Output filenames are fixed (no content hashes) so Matrix file asset URLs stay stable across builds.
 
 ---
 
@@ -128,50 +141,49 @@ git push
 document-library/
 │
 ├── src/                                      ← EDIT HERE — all source files are git-tracked
-│   ├── search-page.js                        # ★ BUILD ENTRY — edit imports to add/remove bundle contents
-│   ├── search-section.html                   # ★ Search input HTML fragment → dist/search-section.html (Matrix nested container)
-│   ├── js/                                   ← NTG first-party scripts
-│   │   ├── coveo-search.js                   # ★ Coveo REST API fetch + result rendering (dev: mock JSON; prod: live API)
-│   │   ├── components.js                     # Design system component behaviours (accordions, tabs, etc.)
-│   │   ├── global-v2.js                      # Global NTG behaviours: nav URL rewriting, .oft download attr, user profile fetch
-│   │   ├── profile-menu.js                   # User profile dropdown menu
-│   │   └── status-toolbar.js                 # Dev/test status toolbar (slides in from right)
-│   ├── css/                                  ← NTG first-party stylesheets
-│   │   ├── main.css                          # Primary NTG intranet stylesheet (~1.8 MB); .ntgc-search-section block appended at end
-│   │   └── status-toolbar.css                # Dev/test status toolbar styles
-│   ├── mock/                                 ← Development mock data — do not deploy
-│   │   └── coveo-search-rest-api-query.json  # Sample Coveo REST API response (189 results) for local dev/offline testing
+│   ├── search-page.js                        # ★ BUILD ENTRY — imports search-widget.css + coveo-search.js
+│   ├── search-section.html                   # ★ Search form HTML fragment → dist/search-section.html
+│   ├── search-results.html                   # ★ Results/filters HTML fragment → dist/search-results.html
+│   ├── js/
+│   │   └── coveo-search.js                   # ★ Coveo REST API fetch, filtering, pagination, card/table rendering
+│   ├── css/
+│   │   ├── search-widget.css                 # ★ All widget styles: design tokens, form, .doc-search-* components
+│   │   ├── main.css                          # NTG central stylesheet (~13,900 lines) — loaded by Matrix, NOT bundled
+│   │   └── status-toolbar.css                # Dev/test status toolbar styles — loaded by Matrix, NOT bundled
+│   ├── mock/
+│   │   └── coveo-search-rest-api-query.json  # 189-result Coveo API snapshot for local dev
 │   └── vendor/                               ← Third-party locked dependencies — do not edit
 │       ├── js/
-│       │   ├── jquery-3.4.1.min.js           # jQuery 3.4.1 — loaded in <head>, must be first
-│       │   ├── jquery.sumoselect.min.js       # SumoSelect — styled multi-select dropdowns
-│       │   ├── jquery.tablesort.min.js        # Lightweight table column sorting
-│       │   ├── imageslider-fotorama.js        # Fotorama image slider (header carousel)
-│       │   ├── auds.js                        # Australian Government Design System (AUDS) JS
-│       │   ├── ntg-central-update-user-profile.js  # Syncs user profile from NTG Central
-│       │   ├── moment.min.js                  # Moment.js — date formatting for search results
-│       │   ├── pagination.min.js              # Coveo search pagination
-│       │   └── gtm.js                         # Google Tag Manager bundle (GA4: G-WY2GK59DRN)
+│       │   ├── jquery-3.4.1.min.js           # jQuery 3.4.1 (loaded by Matrix paint layout before this bundle)
+│       │   ├── jquery.sumoselect.min.js       # Styled multi-select dropdowns
+│       │   ├── jquery.tablesort.min.js        # Lightweight table sort
+│       │   ├── imageslider-fotorama.js        # Header carousel
+│       │   ├── auds.js                        # Australian Government Design System JS
+│       │   ├── ntg-central-update-user-profile.js  # NTG Central user profile sync
+│       │   ├── moment.min.js                  # Date formatting (window.moment — optional)
+│       │   ├── pagination.min.js              # Coveo pagination helper (legacy)
+│       │   └── gtm.js                         # Google Tag Manager (GA4: G-WY2GK59DRN)
 │       ├── css/
-│       │   ├── all.css                        # Font Awesome 5 Pro icon set (local fallback)
-│       │   ├── roboto.css                     # Roboto web font (self-hosted)
-│       │   ├── imageslider-fotorama.css        # Fotorama slider styles
-│       │   └── yht7rxj.css                    # Squiz Matrix / GTM injected stylesheet
-│       └── img/                              ← Vendor SVG assets (formerly /?a=XXXXXX Matrix asset references)
-│           ├── ntg-central-rose-petal-default.svg  # Petal shape used by .ntgc-petal-icon and .ntgc-image-mask--petal
-│           ├── ntgc-image-mask-type-a.svg          # Blob mask A — .ntgc-image-mask--blob-a
-│           ├── ntgc-image-mask-type-b.svg          # Blob mask B — .ntgc-image-mask--blob-b
-│           └── ntgc-image-mask-type-c.svg          # Blob mask C — .ntgc-image-mask--blob-c
+│       │   ├── all.css                        # Font Awesome 5 Pro (loaded by Matrix)
+│       │   ├── roboto.css                     # Roboto web font (loaded by Matrix)
+│       │   ├── imageslider-fotorama.css        # Fotorama slider styles (loaded by Matrix)
+│       │   └── yht7rxj.css                    # Squiz Matrix / Adobe Fonts stylesheet (loaded by Matrix)
+│       └── img/
+│           ├── ntg-central-rose-petal-default.svg
+│           ├── ntgc-image-mask-type-a.svg
+│           ├── ntgc-image-mask-type-b.svg
+│           └── ntgc-image-mask-type-c.svg
 │
 ├── dist/                                     ← BUILD OUTPUT — committed; Git File Bridge deploys these
-│   ├── search-page.js                        # ★ Deployed to Matrix paint layout <script>
-│   ├── search-page.css                       # ★ Deployed to Matrix paint layout <link>
-│   └── search-section.html                   # ★ Deployed to Matrix nested container asset (bare HTML fragment)
+│   ├── search-page.js                        # ★ → Matrix paint layout <script>
+│   ├── search-page.css                       # ★ → Matrix paint layout <link>
+│   ├── search-section.html                   # ★ → Matrix nested container (form)
+│   └── search-results.html                   # ★ → Matrix nested container (results)
 │
-├── search-section-preview.html               # Local dev preview page (full HTML; references dist/)
-├── Document search _ DCDD intranet.html      # CMS page snapshot for local dev (gitignored)
-├── Document search _ DCDD intranet_files/    # Original snapshot assets (gitignored, backup only)
-├── vite.config.js                            # Vite config: dev server (HMR) + build (IIFE) + copy-search-section plugin
+├── search-section-preview.html               # Full-page dev preview (references ./dist/)
+├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate preview (gitignored)
+├── Document search _ DCDD intranet_files/    # Snapshot companion assets (gitignored, reference only)
+├── vite.config.js                            # Vite: dev server + IIFE build + copy-html plugin
 ├── package.json                              # npm scripts: dev / build / preview
 ├── .gitignore
 └── README.md
@@ -179,20 +191,15 @@ document-library/
 
 ### What to edit — quick reference
 
-| Goal                               | Action                                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Change search input layout/markup  | Edit `src/search-section.html` → `npm run build` → commit `src/` + `dist/`                             |
-| Change search input styles         | Edit `.ntgc-search-section` block at end of `src/css/main.css` → build → commit                        |
-| Change search fetch or result rendering | Edit `src/js/coveo-search.js` → build → commit                                                   |
-| Change page styles                 | Edit `src/css/main.css` → `npm run build` → commit `src/` + `dist/`                                    |
-| Change status toolbar styles       | Edit `src/css/status-toolbar.css` → build → commit                                                     |
-| Change component behaviour         | Edit `src/js/components.js` → build → commit                                                            |
-| Change global nav / link behaviour | Edit `src/js/global-v2.js` → build → commit                                                             |
-| Change profile menu                | Edit `src/js/profile-menu.js` → build → commit                                                          |
-| Change status toolbar behaviour    | Edit `src/js/status-toolbar.js` → build → commit                                                        |
-| Add a new file to the bundle       | Add `import './js/newfile.js'` to `src/search-page.js` → build → commit                                |
-| Upgrade a vendor library           | Replace file in `src/vendor/js/` or `src/vendor/css/` and update the reference in the Matrix page template |
-| Update a vendor SVG image          | Replace file in `src/vendor/img/`; CSS in `src/css/main.css` already references it via relative path   |
+| Goal                                       | File(s) to edit                              | Then                              |
+| ------------------------------------------ | -------------------------------------------- | --------------------------------- |
+| Change search input markup                 | `src/search-section.html`                    | `npm run build` → commit src+dist |
+| Change results/filters/pagination layout   | `src/search-results.html`                    | `npm run build` → commit src+dist |
+| Change search logic, rendering, filters    | `src/js/coveo-search.js`                     | `npm run build` → commit src+dist |
+| Change widget styles (tokens, components)  | `src/css/search-widget.css`                  | `npm run build` → commit src+dist |
+| Add a file to the bundle                   | Add `import './...'` to `src/search-page.js` | `npm run build` → commit src+dist |
+| Change mock data for local testing         | `src/mock/coveo-search-rest-api-query.json`  | No build needed (fetched at runtime) |
+| Upgrade a vendor library                   | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit |
 
 ---
 
@@ -202,23 +209,17 @@ document-library/
 
 The HTML is rendered server-side by Squiz Matrix. Key Matrix-specific patterns:
 
-| Pattern                                                           | Purpose                                                                 |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `<!--coveo_no_index_start_XX-->` / `<!--coveo_no_index_end_XX-->` | Tells the Coveo crawler to skip indexing sections of the page           |
-| `meta[name="ntgc.*"]`                                             | NTG-specific page metadata (asset ID, lineage, shortname)               |
-| `meta[name="dcterms.*"]`                                          | Dublin Core metadata required by NTG publishing standards               |
-| `data-user="770097"` on `<body>`                                  | The logged-in user's Squiz Matrix asset ID                              |
-| `pagedata` JS object                                              | Runtime page context injected by Matrix (asset IDs, URLs, persona data) |
-| `pagedata.variations`                                             | Matrix content variations/personalisations defined against this asset   |
+| Pattern                                                           | Purpose                                                               |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `<!--coveo_no_index_start_XX-->` / `<!--coveo_no_index_end_XX-->` | Tells the Coveo crawler to skip indexing sections of the page         |
+| `meta[name="ntgc.*"]`                                             | NTG-specific page metadata (asset ID, lineage, shortname)             |
+| `meta[name="dcterms.*"]`                                          | Dublin Core metadata required by NTG publishing standards             |
+| `data-user="…"` on `<body>`                                       | The logged-in user's Squiz Matrix asset ID                            |
+| `pagedata` JS object                                              | Runtime page context injected by Matrix (asset IDs, URLs, variations) |
 
 ### Search: Coveo
 
-Search results are fetched by `src/js/coveo-search.js` (bundled into `dist/search-page.js`). It detects the environment by hostname and chooses the correct data source:
-
-| Environment                  | Data source                                                              |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `localhost` / `127.0.0.1`    | `src/mock/coveo-search-rest-api-query.json` (189 sample results, no VPN needed) |
-| All other hosts (production) | Coveo Search REST API (see URL below)                                    |
+Search results are fetched by `src/js/coveo-search.js` (compiled into `dist/search-page.js`).
 
 **Production API URL:**
 
@@ -230,111 +231,197 @@ https://search-internal.nt.gov.au/Coveo/rest
   &partialMatchThreshold=2
   &scope=28319
   &numberOfResults=1000
-  &SortCriteria=relevancy         ← reads ?sort= URL param, falls back to "relevancy"
+  &SortCriteria=relevancy         ← reads ?sort= URL param; default: "relevancy"
   &maximumAge=1
-  &q=ENCODED_QUERY                ← encodeURIComponent(input value)
+  &q=ENCODED_QUERY                ← encodeURIComponent(#search input value)
 ```
 
-> **VPN required:** `search-internal.nt.gov.au` is only accessible on the NTG network or VPN. Use the mock data file for local development.
+> **VPN required in production.** `search-internal.nt.gov.au` is only reachable on the NTG network. `coveo-search.js` automatically switches to the mock JSON file when `window.location.hostname` is `localhost` or `127.0.0.1`.
 
-**Behaviour on page load:** `coveo-search.js` runs an initial search with an empty query (shows all results) and pre-fills `#search` with any `?query=` URL parameter if present.
+**Behaviour on page load:** `coveo-search.js` fires `runSearch()` unconditionally on `$(document).ready`. It reads `?query=` and `?sort=` from the URL and pre-fills `#search` accordingly. The search form submit handler is attached only if `#policy-search-form` is present — its absence does not block results from loading.
 
-**Results are injected** into `#search-results-list` using the `.search-template` element as a client-side HTML template. `data-ref` attributes on child elements are binding points:
+**Module state (inside the IIFE):**
 
-| `data-ref` value              | API field mapped                                             |
-| ----------------------------- | ------------------------------------------------------------ |
-| `search-result-title`         | `result.raw.resourcefriendlytitle \|\| result.title`         |
-| `search-result-icon`          | FA icon class derived from `result.raw.resourcetype`         |
-| `search-result-description`   | `result.raw.resourcedescription \|\| result.excerpt`         |
-| `search-result-doctype`       | `result.raw.resourcedoctype` (rendered as a tag span)        |
-| `search-result-assetURL`      | `result.raw.asseturl` — direct download link                 |
-| `search-result-assetURL-open` | `result.raw.asseturl` — open in new tab                      |
-| `search-result-collectionURL` | `result.raw.collectionurl` — parent collection page          |
-| `search-result-filesize`      | `result.raw.resourcefilesize`                                |
-| `search-result-last-updated`  | `result.raw.resourceupdated` (formatted by moment.js if loaded) |
+| Variable                | Type   | Purpose                                        |
+| ----------------------- | ------ | ---------------------------------------------- |
+| `allResults`            | Array  | Full result set returned by Coveo              |
+| `filteredResults`       | Array  | Subset after applying active checkbox filters  |
+| `currentPage`           | Number | Current pagination page (1-based)              |
+| `activeTypeFilters`     | Set    | Checked values under the Type facet            |
+| `activeCategoryFilters` | Set    | Checked values under the Category facet        |
+| `currentSort`           | String | Active Coveo sort criteria string              |
+| `currentQuery`          | String | Last query string passed to `runSearch()`      |
 
-**Icon mapping** (`result.raw.resourcetype` → Font Awesome class):
+**`data-ref` bindings** (attributes on elements inside `.search-template`, populated by `renderCardResults()`):
 
-| `resourcetype` | Icon class         |
-| -------------- | ------------------ |
-| `pdf_file`     | `fal fa-file-pdf`  |
-| `word`         | `fal fa-file-word` |
-| `spreadsheet`  | `fal fa-file-excel`|
-| anything else  | `fal fa-file-alt`  |
+| `data-ref` value                  | Coveo API field                                                       |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `search-result-link`               | `raw.asseturl \|\| result.clickUri` — set as `href`                   |
+| `search-result-title`              | `raw.resourcefriendlytitle \|\| result.title`                          |
+| `search-result-extlink`            | Shown (unhidden) when URL does not contain `internal.nt.gov.au`       |
+| `search-result-description`        | `raw.resourcedescription \|\| result.excerpt`                          |
+| `search-result-collection-row`     | Hidden when `raw.resourcecollectionname` is empty                     |
+| `search-result-collection`         | `raw.resourcecollectionname`                                          |
+| `search-result-collection-link`    | `raw.collectionurl` — set as `href`                                   |
+| `search-result-doctype`            | `raw.resourcedoctype` (rendered as a tag `<span>`)                    |
+| `search-result-last-updated`       | `raw.resourceupdated` — formatted by `moment.js` if available         |
 
-Pagination is handled by `pagination.min.js` and injected into `#sync-pagination`. The loading spinner (`#initialLoadingSpinner`) is shown until the fetch resolves.
+**External link detection:** A result is considered external if its URL does not contain `internal.nt.gov.au`. External results show an inline SVG external-link icon (`.doc-search-result__ext-icon`) — there is no Font Awesome dependency in this bundle.
 
-### Search Section (Nested Container)
+**Sort change behaviour:** Changing the sort `<select>` clears all active filters and re-fetches from Coveo (new sort criteria requires a fresh API call).
 
-The search input is a **Squiz Matrix nested container** asset, rendered from `dist/search-section.html`. This decouples the search input markup from the main page template so it can be versioned and deployed independently.
+### HTML fragments
 
-Source of truth: `src/search-section.html`  
-Built output: `dist/search-section.html` (copied verbatim from `src/` by the `copy-search-section` Vite plugin)  
-Dev preview: `search-section-preview.html` (full page wrapping the fragment; use after `npm run build`)
+#### `src/search-section.html` → `dist/search-section.html`
 
-**BEM classes for the search input** (styled in `src/css/main.css` — `.ntgc-search-section` block at bottom of file):
+The search form. Deployed as a Matrix nested container. Contains an `<input type="text" name="query" id="search">` and a submit button with an inline SVG search icon. The form itself (`<form id="policy-search-form">`) is expected to be added by Matrix as a container wrapper, or be present in the page template — the fragment does not include the `<form>` tag.
 
-| Class                                    | Element                                        |
-| ---------------------------------------- | ---------------------------------------------- |
-| `.ntgc-search-section`                   | Outer wrapper — full-width, centred, padded    |
-| `.ntgc-search-section__container`        | Inner constrained container (max-width 1232px) |
-| `.ntgc-search-section__input-wrapper`    | Input + button row (max-width 640px, outlined) |
-| `.ntgc-search-section__input-field`      | Flex row inside wrapper (white bg, overflow:hidden) |
-| `.ntgc-search-section__text-input`       | `<input type="text">` — transparent, unstyled  |
-| `.ntgc-search-section__submit-btn`       | `<button type="submit">` — transparent, padded |
-| `.ntgc-search-section__icon-container`   | 24×24 icon wrapper                             |
-| `.ntgc-search-section__icon`             | Font Awesome search icon (`fal fa-search`)     |
+#### `src/search-results.html` → `dist/search-results.html`
 
-CSS custom properties used (with hex fallbacks for environments without a design token layer):
+The results area. Deployed as a separate Matrix nested container. Contains:
 
-| Token                    | Fallback  | Used on                     |
-| ------------------------ | --------- | --------------------------- |
-| `--clr-border-subtle`    | `#D0E0E0` | Border/outline colour       |
-| `--clr-bg-default`       | `white`   | Input field background      |
-| `--clr-text-alt`         | `#384560` | Input placeholder/text      |
-| `--clr-text-default`     | `#102040` | Search icon colour          |
-
-### User Session Data
-
-On page load, Matrix injects the authenticated user's details into `localStorage` for use by other NTG scripts:
-
-| Key                      | Value                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------- |
-| `intra-user-id`          | Squiz Matrix asset ID of the logged-in user                                              |
-| `intra-user-info`        | JSON object: `UIgivenName, sn, telephoneNumber, mail, title, location, departmentNumber` |
-| `intra-user-displayName` | `'Yes'` if the display name should be shown                                              |
-
-### Analytics
-
-Google Analytics 4 via Google Tag Manager. GTM bundle is loaded from the local `js` file (originally `gtm.js`). The GA4 measurement ID is `G-WY2GK59DRN`.
+- `.doc-search-outer` / `.doc-search-layout` — outer wrapper and two-column flex container
+- `#doc-search-results-col` — results column; `data-view="card"` or `data-view="table"` switches the active view
+- `#initialLoadingSpinner` — CSS ring spinner; visible while fetch is in progress
+- `#doc-search-user-message` — error / no-results message area
+- `#doc-search-results-summary` — "Showing X–Y of N results" text
+- `#doc-search-sort-select` — sort `<select>` (Relevance / Newest first / Oldest first)
+- `#doc-search-view-toggle` — card/table toggle pill button (`aria-pressed="true"` = table active)
+- `#doc-search-results-list` — `<ul>` where card result `<li>` items are appended
+- `#doc-search-table` / `#doc-search-table-body` — `<table>` rendered in table view
+- `#doc-search-pagination` — pagination `<nav>` (prev/next buttons + numbered pages with ellipsis)
+- `#doc-search-sidebar` — filter sidebar containing two facet groups (Type, Category)
+- `#doc-search-type-filters` — `<ul>` of checkbox filter items for `resourcedoctype`
+- `#doc-search-category-filters` — `<ul>` of checkbox filter items for `resourcecollectionname`
+- `.search-template` (`hidden`) — result card template `<li>` cloned by JS per result
 
 ---
 
 ## Key Element IDs
 
-| ID                                           | Purpose                                                      |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| `#policy-search-form`                        | Main search form — submitting it triggers a new Coveo search |
-| `#search`                                    | Free-text keyword input (`name="query"`)                     |
-| `#search-results-list`                       | `coveo-search.js` injects result cards here                  |
-| `#sync-pagination`                           | Pagination controls injected here                            |
-| `#initialLoadingSpinner`                     | Shown while search loads; hidden on response                 |
-| `#ntgc-status--toolbar`                      | Dev/test status toolbar (hidden off-screen by default)       |
+| ID                            | Purpose                                              |
+| ----------------------------- | ---------------------------------------------------- |
+| `#policy-search-form`         | Search form — submit triggers `runSearch()`          |
+| `#search`                     | Free-text input (`name="query"`)                     |
+| `#doc-search-results-col`     | Results column; `data-view` attr controls card/table |
+| `#initialLoadingSpinner`      | Shown during fetch; hidden on response               |
+| `#doc-search-user-message`    | Error / no-results message                           |
+| `#doc-search-results-summary` | "Showing X–Y of N results" line                      |
+| `#doc-search-sort-select`     | Sort `<select>` — change re-fetches from Coveo       |
+| `#doc-search-view-toggle`     | Card/table toggle pill button                        |
+| `#doc-search-results-list`    | Card results `<ul>`                                  |
+| `#doc-search-table-body`      | Table results `<tbody>`                              |
+| `#doc-search-pagination`      | Pagination `<nav>`                                   |
+| `#doc-search-sidebar`         | Filter sidebar `<aside>`                             |
+| `#doc-search-type-filters`    | Type facet checkbox list                             |
+| `#doc-search-category-filters`| Category facet checkbox list                         |
 
 ---
 
-## CSS Class Conventions
+## CSS — search-widget.css
 
-All NTG design system classes use the `ntgc-` prefix. Bootstrap 4 grid classes (`col-md-*`, `d-none`, etc.) are also used throughout. Key page-specific classes:
+`src/css/search-widget.css` is the **only CSS file in the bundle** (`dist/search-page.css`). It is fully self-contained — no dependency on `main.css` or any external stylesheet.
 
-| Class                       | Purpose                                                          |
-| --------------------------- | ---------------------------------------------------------------- |
-| `.ntgc-search-section`      | Outer wrapper for the search input section (nested container)    |
-| `.ntg-search-listing__item` | A single search result card                                      |
-| `.search-template`          | Hidden template element cloned by `coveo-search.js` per result   |
-| `.ntgc-pill`                | An active filter pill tag                                        |
-| `.ntgc-pill__checkbox`      | Checkbox inside pill; unchecking removes the filter              |
-| `.ntgc-body--neutral-2`     | Light grey background used for the results area                  |
+### Design tokens (`:root` block)
+
+All colours, typography scales, and border radii are defined as CSS custom properties. Key tokens:
+
+| Token                    | Value     | Usage                                |
+| ------------------------ | --------- | ------------------------------------ |
+| `--clr-text-default`     | `#102040` | Body text, links                     |
+| `--clr-text-alt`         | `#384560` | Secondary text, input placeholder    |
+| `--clr-border-subtle`    | `#d0e0e0` | Borders, outlines                    |
+| `--clr-bg-default`       | `#ffffff`  | Input background                     |
+| `--clr-bg-shade-alt`     | `#ecf0f0` | Results area background              |
+| `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)              |
+| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on) |
+
+### BEM classes
+
+#### Search form (`ntgc-search-section`)
+
+| Class                                  | Element                                          |
+| -------------------------------------- | ------------------------------------------------ |
+| `.ntgc-search-section`                 | Outer wrapper — full-width, centred, padded      |
+| `.ntgc-search-section__container`      | Constrained inner container (max-width 1232px)   |
+| `.ntgc-search-section__input-wrapper`  | Input + button row (max-width 640px, outlined)   |
+| `.ntgc-search-section__input-field`    | Flex row — white background, overflow hidden     |
+| `.ntgc-search-section__text-input`     | `<input type="text">` — unstyled                 |
+| `.ntgc-search-section__submit-btn`     | `<button type="submit">` — transparent           |
+| `.ntgc-search-section__icon-container` | 24×24 icon wrapper                               |
+| `.ntgc-search-section__icon`           | Inline SVG search icon (no Font Awesome needed)  |
+
+#### Results widget (`doc-search-*`)
+
+| Class                               | Element                                                    |
+| ----------------------------------- | ---------------------------------------------------------- |
+| `.doc-search-outer`                 | Outer section wrapper — shaded bg, padded                  |
+| `.doc-search-layout`                | Two-column flex (results col + sidebar)                    |
+| `.doc-search-results-col`           | Results column; `[data-view="table"]` activates table mode |
+| `.doc-search-results-header`        | Bar above results — summary text + controls                |
+| `.doc-search-results-summary`       | "Showing X–Y of N results" `<p>`                           |
+| `.doc-search-results-controls`      | Flex row — sort select + view toggle                       |
+| `.doc-search-sort-select`           | Sort dropdown `<select>`                                   |
+| `.doc-search-view-toggle`           | Card/table toggle pill `<button>`                          |
+| `.doc-search-view-toggle__pill`     | The sliding oval indicator                                 |
+| `.doc-search-view-toggle__label`    | "Table view" / "Card view" text                            |
+| `.doc-search-spinner`               | Loading spinner wrapper                                    |
+| `.doc-search-spinner__ring`         | CSS `@keyframes` ring animation                            |
+| `.doc-search-user-message`          | Error / empty-state message                                |
+| `.doc-search-results-list`          | Card results `<ul>`                                        |
+| `.doc-search-result`                | Single result card `<li>`                                  |
+| `.doc-search-result__title-link`    | Card title `<a>`                                           |
+| `.doc-search-result__ext-icon`      | Inline SVG external-link icon (shown for external URLs)    |
+| `.doc-search-result__description`   | Excerpt/description `<p>`                                  |
+| `.doc-search-result__collection-row`| "Collection: …" row                                        |
+| `.doc-search-result__collection-link`| Link to the parent collection                             |
+| `.doc-search-result__meta`          | Flex row — doctype tag + last-updated date                 |
+| `.doc-search-result__tag`           | Document type tag `<span>` (e.g. "Policy")                 |
+| `.doc-search-result__updated`       | Last-updated date `<span>`                                 |
+| `.doc-search-table-wrap`            | Overflow wrapper for table (hidden in card view)           |
+| `.doc-search-table`                 | Results `<table>` (visible only when `data-view="table"`)  |
+| `.doc-search-table__col-title`      | Title column — 50% width                                   |
+| `.doc-search-table__col-updated`    | Last Updated column                                        |
+| `.doc-search-table__col-type`       | Type column                                                |
+| `.doc-search-table__col-collection` | Collection column                                          |
+| `.doc-search-table__title-link`     | Title `<a>` inside table row                               |
+| `.doc-search-table__tag`            | Doctype `<span>` inside table row                          |
+| `.doc-search-pagination`            | Pagination `<nav>`                                         |
+| `.doc-search-pagination__btn`       | Page number / prev / next `<button>`                       |
+| `.doc-search-pagination__btn--active`| Currently selected page button                            |
+| `.doc-search-pagination__btn--prev` | "‹ Prev" button                                            |
+| `.doc-search-pagination__btn--next` | "Next ›" button                                            |
+| `.doc-search-pagination__ellipsis`  | `…` gap `<span>` between page numbers                      |
+| `.doc-search-sidebar`               | Filter sidebar `<aside>`                                   |
+| `.doc-search-filter-group`          | A single facet group (Type or Category)                    |
+| `.doc-search-filter-group__title`   | Facet group heading `<h3>`                                 |
+| `.doc-search-facet-list`            | Checkbox list `<ul>`                                       |
+| `.doc-search-facet-item`            | Checkbox label wrapper `<label>`                           |
+| `.doc-search-facet-item__label`     | Facet value text                                           |
+| `.doc-search-facet-item__count`     | Result count `(N)` in parentheses                          |
+| `.doc-search-facet-hidden`          | Applied to facet items beyond `MAX_FACET_VISIBLE` (5)      |
+| `.doc-search-show-all`              | "Show all (N)" button — removes `.doc-search-facet-hidden` |
+| `.search-template`                  | Hidden `<li>` template — cloned per result by JS           |
+
+**Responsive breakpoint:** At ≤ 900px, `.doc-search-layout` switches from row to column and the sidebar moves below the results.
+
+---
+
+## User Session Data
+
+Matrix injects the authenticated user's details into `localStorage` on page load:
+
+| Key                      | Value                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `intra-user-id`          | Squiz Matrix asset ID of the logged-in user                                       |
+| `intra-user-info`        | JSON: `UIgivenName, sn, telephoneNumber, mail, title, location, departmentNumber` |
+| `intra-user-displayName` | `'Yes'` if the display name should be shown                                       |
+
+---
+
+## Analytics
+
+Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded by the Matrix paint layout — it is not in this bundle.
 
 ---
 
@@ -351,16 +438,22 @@ All NTG design system classes use the `ntgc-` prefix. Bootstrap 4 grid classes (
 
 ## Known Quirks & Notes for Developers
 
-- **`js` file (no extension):** The Google Tag Manager bundle in `_files/js` has no file extension — it was originally `gtm.js` but saved without extension by the browser. It still loads correctly as JavaScript.
-- **Font Awesome kit (dev):** `search-section-preview.html` loads Font Awesome via the project kit (`https://kit.fontawesome.com/9bf658a5c7.js`). This is a JS-based kit loader and requires internet access. The production Matrix paint layout loads Font Awesome Pro from a different source — ensure both are in sync when upgrading icon versions.
-- **SRI hash on `all.css`:** The `integrity` attribute on the Font Awesome stylesheet will cause a browser error if the file is modified locally. Remove the `integrity` / `crossorigin` attributes if you need to edit `all.css`.
-- **VPN required for production search:** `search-internal.nt.gov.au` is only accessible on the NTG network. `coveo-search.js` automatically uses `src/mock/coveo-search-rest-api-query.json` when hostname is `localhost` or `127.0.0.1` — no VPN needed for local development.
-- **Mock data is static:** The mock JSON (`src/mock/coveo-search-rest-api-query.json`) always returns the same 189 results regardless of the query string typed in dev. It is a snapshot used purely to test the rendering pipeline.
-- **`coveo-search.js` and `ntgov-coveo-search.js` co-exist on the full Matrix page:** The full CMS page also loads `ntgov-coveo-search.js` from the production CDN, which has its own `ntgCOVEO` object. Both `coveo-search.js` (bundled) and `ntgov-coveo-search.js` (CDN) listen to `#policy-search-form` submit and render into `#search-results-list`. There is no conflict, but results may render twice on the full Matrix page. The intention is to eventually remove the CDN dependency.
-- **Vendor SVGs in `src/vendor/img/`:** The four SVG files (petal + blob masks) were previously referenced as `/?a=XXXXXX` Matrix asset URLs. They are now local files referenced by relative path from `src/css/main.css`. If the Matrix design system is updated, replace the files in `src/vendor/img/` and rebuild.
-- **jQuery loaded twice (potentially):** `jquery-3.4.1.min.js` is loaded in `<head>` and `jquery.sumoselect.min.js` is loaded at the bottom of `<body>`. The sumoselect init depends on jQuery already being present, which is satisfied by the head load.
-- **`.oft` link handling:** `global-v2.js` automatically adds a `download` attribute to any `<a>` tag pointing to a `.oft` (Outlook Template) file.
-- **Anchor scroll fix:** A `$(window).on('load')` handler re-triggers `window.location.hash` scrolling after 1000ms to work around Coveo's async DOM injection pushing page elements down after initial load.
-- **Apostrophe stripping:** A form submit handler strips `'` and `'` (smart apostrophe) from search inputs — this prevents Coveo query parse errors.
-- **`@supports` CSS warning at build time:** Vite/esbuild emits a `[WARNING] Expected identifier but found "@supports"` during minification due to a vendor CSS pattern targeting IE (`-ms-ime-align`). This is a known pre-existing issue in the vendor stylesheet and does not affect functionality. Safe to ignore.
-
+- **No Font Awesome in the bundle.** `dist/search-page.css` and `dist/search-page.js` have zero Font Awesome dependencies. All icons are inline SVGs (external-link icon in cards and table) or pure CSS (spinner ring via `@keyframes doc-search-spin`, sort chevron via unicode `▾`, pagination arrows via unicode `‹`/`›`). Font Awesome Pro is still loaded by the Matrix paint layout for the rest of the page — just not needed here.
+
+- **VPN required for production search.** `search-internal.nt.gov.au` is only accessible on the NTG network. `coveo-search.js` automatically falls back to the mock JSON when `hostname` is `localhost` or `127.0.0.1`.
+
+- **Mock data is static.** `src/mock/coveo-search-rest-api-query.json` always returns the same 189 results regardless of the query string. It is a snapshot used purely to exercise the rendering pipeline locally.
+
+- **Sort resets filters.** Changing the sort `<select>` clears `activeTypeFilters` and `activeCategoryFilters` and re-fetches from Coveo. This is intentional — filters are rebuilt from the new result set returned by the API.
+
+- **`runSearch()` fires unconditionally.** The `$(document).ready` handler calls `runSearch()` regardless of whether `#policy-search-form` exists on the page. The form submit handler is wired up separately, only if `#policy-search-form` is found. This allows the results area to work as a standalone nested container without needing the form on the same page load.
+
+- **`moment.js` is optional.** `formatDate()` checks `window.moment` before calling it. If moment is not available, the raw date string from `raw.resourceupdated` is displayed as-is.
+
+- **`@supports` CSS warning at build time.** Vite/esbuild emits `[WARNING] Expected identifier but found "@supports"` from `src/css/main.css`. This is a pre-existing IE-targeting vendor pattern (`-ms-ime-align`) and does not affect functionality. Safe to ignore — `main.css` is not in the bundle anyway.
+
+- **Vendor SVGs in `src/vendor/img/`.** The four SVG mask files were previously referenced as `/?a=XXXXXX` Matrix asset URLs in production. They are now local files referenced by relative path from `src/css/main.css`. If the NTG design system is updated, replace the files in `src/vendor/img/` and rebuild.
+
+- **`.oft` link handling.** `global-v2.js` (loaded by Matrix, not bundled) automatically adds a `download` attribute to any `<a>` pointing to a `.oft` (Outlook Template) file.
+
+- **`search-section-preview.html` is generated from the production HTML snapshot.** To regenerate it after the production page changes significantly: write a Node script that reads `Document search _ DCDD intranet.html`, replaces the CDN widget refs with `./dist/` paths, wraps the `ntgc-search-section` div in `<form id="policy-search-form">`, and injects the contents of `src/search-results.html` after the form. See `build-preview.js` (deleted after use) in git history for reference.

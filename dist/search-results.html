@@ -1,0 +1,94 @@
+<div class="doc-search-outer">
+    <div class="doc-search-layout">
+
+        <!-- Results column -->
+        <div class="doc-search-results-col" data-view="card" id="doc-search-results-col">
+
+            <!-- Loading spinner -->
+            <div class="doc-search-spinner d-none" role="status" id="initialLoadingSpinner">
+                <span class="doc-search-spinner__ring" aria-hidden="true"></span>
+                <span>Loading search results…</span>
+            </div>
+
+            <!-- User message -->
+            <div class="doc-search-user-message" id="doc-search-user-message"></div>
+
+            <!-- Results header -->
+            <div class="doc-search-results-header">
+                <p class="doc-search-results-summary" id="doc-search-results-summary"></p>
+                <div class="doc-search-results-controls">
+                    <select class="doc-search-sort-select" id="doc-search-sort-select" aria-label="Sort results by">
+                        <option value="relevancy">Relevance</option>
+                        <option value="date descending">Newest first</option>
+                        <option value="date ascending">Oldest first</option>
+                    </select>
+                    <button type="button" class="doc-search-view-toggle" id="doc-search-view-toggle"
+                        aria-pressed="false" aria-label="Toggle table view">
+                        <span class="doc-search-view-toggle__pill"></span>
+                        <span class="doc-search-view-toggle__label">Table view</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card results list -->
+            <ul class="doc-search-results-list" id="doc-search-results-list" role="list"></ul>
+
+            <!-- Table results -->
+            <div class="doc-search-table-wrap">
+                <table class="doc-search-table" id="doc-search-table">
+                    <thead>
+                        <tr>
+                            <th class="doc-search-table__col-title">Title</th>
+                            <th class="doc-search-table__col-updated">Last Updated</th>
+                            <th class="doc-search-table__col-type">Type</th>
+                            <th class="doc-search-table__col-collection">Collection</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doc-search-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav class="doc-search-pagination" id="doc-search-pagination" aria-label="Search results pages"></nav>
+
+        </div><!-- /.doc-search-results-col -->
+
+        <!-- Filter sidebar -->
+        <aside class="doc-search-sidebar" id="doc-search-sidebar" aria-label="Filter results">
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Type</h3>
+                <ul class="doc-search-facet-list" id="doc-search-type-filters" role="group"
+                    aria-label="Filter by document type"></ul>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Category</h3>
+                <ul class="doc-search-facet-list" id="doc-search-category-filters" role="group"
+                    aria-label="Filter by category"></ul>
+            </div>
+        </aside>
+
+    </div><!-- /.doc-search-layout -->
+</div><!-- /.doc-search-outer -->
+
+<!-- Result card template (hidden — cloned per result by coveo-search.js) -->
+<li class="doc-search-result search-template" hidden>
+    <a class="doc-search-result__title-link" href="#" data-ref="search-result-link">
+        <span data-ref="search-result-title"></span>
+        <svg class="doc-search-result__ext-icon" data-ref="search-result-extlink" hidden aria-hidden="true" width="12"
+            height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
+    </a>
+    <p class="doc-search-result__description" data-ref="search-result-description"></p>
+    <div class="doc-search-result__collection-row" data-ref="search-result-collection-row">
+        Collection: <a class="doc-search-result__collection-link" href="#"
+            data-ref="search-result-collection-link"><span data-ref="search-result-collection"></span></a>
+    </div>
+    <div class="doc-search-result__meta">
+        <span class="doc-search-result__tag" data-ref="search-result-doctype"></span>
+        <span class="doc-search-result__updated" data-ref="search-result-last-updated"></span>
+    </div>
+</li>

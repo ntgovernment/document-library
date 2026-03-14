@@ -10,6 +10,7 @@ export default defineConfig({
       name: "copy-search-section",
       closeBundle() {
         copyFileSync("src/search-section.html", "dist/search-section.html");
+        copyFileSync("src/search-results.html", "dist/search-results.html");
       },
     },
   ],

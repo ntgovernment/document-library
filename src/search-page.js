@@ -26,12 +26,10 @@
  */
 
 // ── CSS ───────────────────────────────────────────────────────────────────────
-import "./css/main.css";
-import "./css/status-toolbar.css";
+// main.css and status-toolbar.css are loaded by the Matrix page template — not bundled here
+import "./css/search-widget.css";
 
-// ── NTG first-party JS ────────────────────────────────────────────────────────
-import "./js/components.js";
-import "./js/global-v2.js";
-import "./js/profile-menu.js";
-import "./js/status-toolbar.js";
+// ── Search JS ─────────────────────────────────────────────────────────────────
+// components.js, global-v2.js, profile-menu.js, status-toolbar.js are loaded
+// by the Matrix page template — not bundled here
 import "./js/coveo-search.js";
