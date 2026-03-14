@@ -34,3 +34,4 @@ import "./js/components.js";
 import "./js/global-v2.js";
 import "./js/profile-menu.js";
 import "./js/status-toolbar.js";
+import "./js/coveo-search.js";

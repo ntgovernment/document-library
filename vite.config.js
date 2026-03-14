@@ -1,11 +1,20 @@
 import { defineConfig } from "vite";
+import { copyFileSync } from "fs";
 
 export default defineConfig({
   root: ".",
   // src/ is served as regular static files — Vite watches them for HMR
   publicDir: false,
+  plugins: [
+    {
+      name: "copy-search-section",
+      closeBundle() {
+        copyFileSync("src/search-section.html", "dist/search-section.html");
+      },
+    },
+  ],
   server: {
-    open: "/Document search _ DCDD intranet.html",
+    open: "/search-section-preview.html",
     port: 3000,
     // Watch src/ for changes; HMR will reload the page on edits to JS/CSS
     watch: {

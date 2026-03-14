@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Search Section Preview — DCDD</title>
+    <script src="https://kit.fontawesome.com/9bf658a5c7.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="./dist/search-page.css">
+    <style>
+        body {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+
+<body class="au-body">
+
+    <!-- Search input (fragment content) -->
+    <form action="/search" autocomplete="off" class="search-results-form au-form" id="policy-search-form" method="get"
+        name="policy-search-form">
+        <div class="ntgc-search-section">
+            <div class="ntgc-search-section__container">
+                <div class="ntgc-search-section__input-wrapper" data-state="Default" data-variant="Secondary">
+                    <div class="ntgc-search-section__input-field">
+                        <label class="sr-only" for="search">Search</label>
+                        <input type="text" name="query" id="search" class="ntgc-search-section__text-input"
+                            placeholder="Enter your search terms" value="">
+                        <button class="ntgc-search-section__submit-btn" type="submit" aria-label="Search">
+                            <div class="ntgc-search-section__icon-container" data-colour="Black">
+                                <span class="fal fa-search ntgc-search-section__icon"></span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Results area (rendered by coveo-search.js) -->
+    <div class="ntgc-body--neutral-2 pt-4 pb-4">
+        <div class="container">
+            <div class="loading-container pt-2 pb-2" role="status" id="initialLoadingSpinner">
+                <span class="loading-text">Loading search</span>
+                <div class="spinner-border"></div>
+            </div>
+            <div class="search-user-message pt-2 pb-2"></div>
+            <div class="ntg-search-listing" data-filter="" id="search-results-list"></div>
+            <div id="sync-pagination" class="pt-2 d-none"></div>
+        </div>
+    </div>
+
+    <!-- Result template (hidden — cloned by coveo-search.js per result) -->
+    <div class="ntg-search-listing__item search-template" hidden>
+        <div class="row">
+            <!-- Left Content -->
+            <div class="col-md-8">
+                <h3 class="search-title mb-2 mt-0 ntg-search-listing__title">
+                    <span class="ntg-search-listing__icon" data-ref="search-result-icon"></span>
+                    <span data-ref="search-result-title"></span>
+                </h3>
+                <p class="mt-0 mb-2 ntg-search-listing__description" data-ref="search-result-description"></p>
+                <!-- Tags -->
+                <div class="ntg-search-listing__categories mb-0" data-ref="search-result-doctype"></div>
+            </div>
+            <!-- Right Content -->
+            <div class="col-md-4 ntg-search-listing__right-content">
+                <a href="#" class="ntgc-btn ntgc-btn--primary" data-ref="search-result-assetURL">Download</a>
+                <div class="ntg-search-listing__links">
+                    <a href="#" class="external" data-ref="search-result-assetURL-open" target="_blank">Open</a>
+                    <a href="#" class="arrow-right" data-ref="search-result-collectionURL">Show more</a>
+                </div>
+                <small class="text-muted d-block ntg-search-listing__meta">
+                    <span data-ref="search-result-filesize"></span>
+                    <span data-ref="search-result-last-updated"></span>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <script src="src/vendor/js/jquery-3.4.1.min.js"></script>
+    <script src="./dist/search-page.js"></script>
+</body>
+
+</html>
