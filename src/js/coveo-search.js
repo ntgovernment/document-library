@@ -314,15 +314,14 @@
         .text(raw.resourcedescription || result.excerpt || "");
 
       // Collection row
-      var collectionName = raw.resourcecollectionname || "";
-      var collectionUrl = raw.collectionurl || "#";
-      if (collectionName) {
+      var collectionAssetId = raw.collectionassetid || "";
+      if (collectionAssetId) {
         $item
           .find('[data-ref="search-result-collection"]')
-          .text(collectionName);
+          .text("%globals_asset_name:" + collectionAssetId + "%");
         $item
           .find('[data-ref="search-result-collection-link"]')
-          .attr("href", collectionUrl);
+          .attr("href", "./?a=" + collectionAssetId);
       } else {
         $item
           .find('[data-ref="search-result-collection-row"]')
