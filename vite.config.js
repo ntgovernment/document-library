@@ -49,32 +49,44 @@ export default defineConfig({
           "src/js/**/*.js",
           "src/css/**/*.css",
           "src/*.html",
+          "collection-page-preview.html",
         ]);
 
         server.watcher.on("change", async (file) => {
           const normalised = file.replace(/\\/g, "/");
-          const isHtml =
+          const isSrcHtml =
             normalised.includes("/src/") && normalised.endsWith(".html");
+          const isPreviewHtml = normalised.endsWith(
+            "collection-page-preview.html",
+          );
+          const isHtml = isSrcHtml || isPreviewHtml;
           const isJsOrCss =
             normalised.includes("/src/js/") || normalised.includes("/src/css/");
 
           if (!isJsOrCss && !isHtml) return;
 
           if (isHtml && !isJsOrCss) {
-            // Just recopy HTML files — no need to rebuild the JS bundle
             try {
-              copyFileSync(
-                "src/search-section.html",
-                "dist/search-section.html",
-              );
-              copyFileSync(
-                "src/search-results.html",
-                "dist/search-results.html",
-              );
-              syncPreviewTemplate();
-              server.config.logger.info(
-                `[auto-rebuild] ${file} changed — HTML recopied, reloading browser`,
-              );
+              if (isSrcHtml) {
+                // Recopy HTML fragments to dist/
+                copyFileSync(
+                  "src/search-section.html",
+                  "dist/search-section.html",
+                );
+                copyFileSync(
+                  "src/search-results.html",
+                  "dist/search-results.html",
+                );
+                syncPreviewTemplate();
+                server.config.logger.info(
+                  `[auto-rebuild] ${file} changed — HTML recopied, reloading browser`,
+                );
+              } else {
+                // Preview HTML changed — just reload
+                server.config.logger.info(
+                  `[auto-rebuild] ${file} changed — reloading browser`,
+                );
+              }
               server.hot.send({ type: "full-reload" });
             } catch (err) {
               server.config.logger.error(
@@ -87,11 +99,27 @@ export default defineConfig({
           if (building) return;
 
           building = true;
+          const isCollectionCss = normalised.endsWith("collection-page.css");
+          // tokens.css changes affect both bundles — rebuild both sequentially
+          const isTokens = normalised.endsWith("tokens.css");
           server.config.logger.info(
-            `[auto-rebuild] ${file} changed — rebuilding…`,
+            `[auto-rebuild] ${file} changed — rebuilding ${isCollectionCss ? "collection" : isTokens ? "all" : "search"}…`,
           );
           try {
-            await build({ logLevel: "silent" });
+            if (isCollectionCss) {
+              await build({
+                logLevel: "silent",
+                configFile: "vite.collection.config.js",
+              });
+            } else if (isTokens) {
+              await build({ logLevel: "silent" });
+              await build({
+                logLevel: "silent",
+                configFile: "vite.collection.config.js",
+              });
+            } else {
+              await build({ logLevel: "silent" });
+            }
             server.config.logger.info("[auto-rebuild] done, reloading browser");
             server.hot.send({ type: "full-reload" });
           } catch (err) {

@@ -1,31 +1,41 @@
-# Document Library – DCDD Policy Search Page
+# Document Library – DCDD Policy Search & Collection Pages
 
 ## Overview
 
-This repository holds the **source assets and compiled bundles** for the DCDD intranet document library search page. The page is rendered by [Squiz Matrix](https://www.squiz.net/platform/matrix) and its JS/CSS is deployed via **Git File Bridge**. The production page lives at:
+This repository holds the **source assets and compiled bundles** for two DCDD intranet pages rendered by [Squiz Matrix](https://www.squiz.net/platform/matrix), deployed via **Git File Bridge**:
 
-```
-https://internal.nt.gov.au/dcdd/dev/policy-library/document-search
-```
+| Page | URL | Role |
+| ---- | --- | ---- |
+| Document search | `https://internal.nt.gov.au/dcdd/dev/policy-library/document-search` | Filterable full-text Coveo search over all DCDD policy documents |
+| Collection pages | e.g. `https://internal.nt.gov.au/dcdd/dev/policy-library/agency-templates` | Per-collection document listing pages (Agency Templates, etc.) |
 
-The page provides staff with a filterable, full-text search interface over DCDD policy documents, backed by a **Coveo** search index. It is part of the wider NTG (Northern Territory Government) intranet design system (`ntgc` prefix throughout the codebase).
+Both pages are part of the wider NTG (Northern Territory Government) intranet design system (`ntgc` prefix throughout). They share a common set of **CSS design tokens** defined in `src/css/tokens.css` and compiled into separate bundles by two independent Vite configs.
 
 ---
 
 ## Architecture at a glance
 
 ```
- GitHub repo (this)                Squiz Matrix (production CMS)
- ──────────────────                ─────────────────────────────
- src/css/search-widget.css ─┐      Paint Layout
- src/js/coveo-search.js    ─┤      ├── <link>  search-page.css  ←── dist/search-page.css
-                             ├─ npm run build                    ←── dist/search-page.js
-                             └──────────────► dist/ ── Git File Bridge
-                                              ├── search-section.html  → Nested container 1 (form)
-                                              └── search-results.html  → Nested container 2 (results)
+ GitHub repo (this)                              Squiz Matrix (production CMS)
+ ──────────────────                              ─────────────────────────────
+                                                 SEARCH PAGE paint layout
+ src/css/tokens.css ──────────────────────┐      ├── <link>   search-page.css  ←── dist/search-page.css
+ src/css/search-widget.css (imports tokens)┤      └── <script> search-page.js  ←── dist/search-page.js
+ src/js/coveo-search.js ──────────────────┘
+   ↓ vite.config.js (npm run build)              Nested containers (HTML fragments)
+   └──────────────────────────────► dist/ ─ Git File Bridge ──► search-section.html (form)
+                                                                 search-results.html (results)
+
+ src/css/tokens.css ──────────────────────┐
+ src/css/collection-page.css (imports ──  ┤      COLLECTION PAGE paint layout
+   tokens)                                ┤      └── <link>   collection-page.css ←── dist/collection-page.css
+   ↓ vite.collection.config.js (npm run build)
+   └──────────────────────────────► dist/ (emptyOutDir: false — does NOT wipe search outputs)
 ```
 
-**Key rule for agents and developers:** Edit source files in `src/js/`, `src/css/`, `src/search-section.html`, or `src/search-results.html`, then run `npm run build`. Always commit **both** `src/` changes and the regenerated `dist/` files together — the `dist/` files are what Git File Bridge delivers to Matrix.
+**Key rule for agents and developers:** Edit source files in `src/css/`, `src/js/`, or `src/*.html`, then run `npm run build`. Always commit **both** `src/` changes and the regenerated `dist/` files together — the `dist/` files are what Git File Bridge delivers to Matrix.
+
+**Dual-build rule:** `npm run build` chains two Vite builds: `vite build` (search bundle) then `vite build --config vite.collection.config.js` (collection bundle). The collection config **must** keep `emptyOutDir: false` to avoid wiping the search outputs. Never run the configs in parallel — they both write to `dist/`.
 
 ---
 
@@ -35,14 +45,17 @@ The page provides staff with a filterable, full-text search interface over DCDD 
 
 **Files deployed to Matrix:**
 
-| Local path                 | Matrix asset          | Used by                                                           |
-| -------------------------- | --------------------- | ----------------------------------------------------------------- |
-| `dist/search-page.js`      | `search-page.js`      | Paint layout `<script>` (after jQuery)                            |
-| `dist/search-page.css`     | `search-page.css`     | Paint layout `<link>`                                             |
-| `dist/search-section.html` | `search-section.html` | Squiz Matrix nested container — search form                       |
-| `dist/search-results.html` | `search-results.html` | Squiz Matrix nested container — results area, filters, pagination |
+| Local path                     | Matrix asset              | Used by                                                           |
+| ------------------------------ | ------------------------- | ----------------------------------------------------------------- |
+| `dist/search-page.js`          | `search-page.js`          | Search page paint layout `<script>` (after jQuery)                |
+| `dist/search-page.css`         | `search-page.css`         | Search page paint layout `<link>`                                 |
+| `dist/collection-page.css`     | `collection-page.css`     | Collection page paint layout `<link>`                             |
+| `dist/search-section.html`     | `search-section.html`     | Squiz Matrix nested container — search form                       |
+| `dist/search-results.html`     | `search-results.html`     | Squiz Matrix nested container — results area, filters, pagination |
 
 > **`dist/` must be rebuilt before committing HTML fragment changes.** The `auto-rebuild-on-src-change` Vite plugin only watches `src/js/` and `src/css/`. Changes to `src/search-section.html` or `src/search-results.html` require a manual `npm run build` to update `dist/`.
+>
+> **`dist/collection-page.js`** is a tiny IIFE stub (< 1 kB). It is an artefact of the Vite IIFE bundle format and can be ignored. Only `dist/collection-page.css` is referenced by the collection page paint layout.
 
 **`dist/` is intentionally committed to git.** Git File Bridge reads from the repository, so the built output must be present in the commit. It is **not** in `.gitignore`.
 
@@ -50,6 +63,7 @@ The HTML page template and vendor/third-party scripts are managed separately ins
 
 ### Paint layout references
 
+**Search page:**
 ```html
 <!-- in the paint layout <head> -->
 <link rel="stylesheet" href="%asset_file_path:search-page-css-asset-id%" />
@@ -58,7 +72,13 @@ The HTML page template and vendor/third-party scripts are managed separately ins
 <script src="%asset_file_path:search-page-js-asset-id%"></script>
 ```
 
-> **jQuery dependency:** The paint layout must load jQuery **before** `search-page.js`. The bundle is IIFE format and expects `$` / `jQuery` to be available as globals.
+**Collection pages:**
+```html
+<!-- in the paint layout <head> -->
+<link rel="stylesheet" href="%asset_file_path:collection-page-css-asset-id%" />
+```
+
+> **jQuery dependency:** The search page paint layout must load jQuery **before** `search-page.js`. The bundle is IIFE format and expects `$` / `jQuery` to be available as globals. `collection-page.css` is CSS-only and has no JS dependency.
 
 ### Nested containers (HTML fragments)
 
@@ -101,7 +121,20 @@ npm run preview # serve the dist/ build locally for final checks
 
 `npm run dev` opens `search-section-preview.html` automatically. This is a **full-fidelity preview page** generated from the production CMS snapshot (`Document search _ DCDD intranet.html`). It includes the real Matrix page chrome (header, nav, footer) and references `./dist/search-page.css` and `./dist/search-page.js` locally, so you can test the complete search interaction without VPN or CMS access.
 
-**Auto-rebuild is active** — edits to any file in `src/js/` or `src/css/` automatically rebuild `dist/` and trigger a full browser reload. Edits to `src/search-section.html` or `src/search-results.html` are automatically recopied to `dist/`, synced into `search-section-preview.html` via `syncPreviewTemplate()`, and trigger a full browser reload — no manual build step needed during dev. Run `npm run build` once before committing to ensure `dist/` reflects the final state.
+**Collection page preview** is also available at `http://localhost:3000/collection-page-preview.html`. This page is a copy of `Agency templates _ Resources.html` (the production CMS snapshot) with `./dist/collection-page.css` injected. Navigate there manually — it does not auto-open.
+
+**Auto-rebuild is active** — the watcher routes changes to the appropriate build:
+
+| File changed | Rebuild action |
+| --- | --- |
+| `src/js/**/*.js` | Rebuilds search bundle (`vite.config.js`) |
+| `src/css/search-widget.css` (or any non-token, non-collection CSS) | Rebuilds search bundle |
+| `src/css/collection-page.css` | Rebuilds collection bundle only (`vite.collection.config.js`) |
+| `src/css/tokens.css` | Rebuilds **both** bundles sequentially |
+| `src/*.html` | Recopies HTML to `dist/`, syncs preview template, reloads browser (no JS rebuild) |
+| `collection-page-preview.html` | Full browser reload only (no rebuild) |
+
+Run `npm run build` once before committing to ensure `dist/` reflects the final state.
 
 ### Mock data vs production API
 
@@ -115,16 +148,24 @@ The mock JSON always returns the same 189 results regardless of the query. It ex
 ### Standard change workflow
 
 ```bash
-# 1. Edit source files
+# 1. Edit source files (search page)
 code src/js/coveo-search.js
 code src/css/search-widget.css
 code src/search-section.html
 code src/search-results.html
 
-# 2. Preview changes interactively (HMR on search-section-preview.html)
-npm run dev
+# 1. Edit source files (collection page)
+code src/css/collection-page.css
 
-# 3. Build the deployable bundle
+# 1. Edit shared tokens (affects both bundles)
+code src/css/tokens.css
+
+# 2. Preview changes interactively
+npm run dev
+# Search page:    http://localhost:3000/search-section-preview.html  (opens automatically)
+# Collection page: http://localhost:3000/collection-page-preview.html
+
+# 3. Build the deployable bundles
 npm run build
 
 # 4. Commit source + built output together
@@ -134,16 +175,26 @@ git push
 # ↑ Git File Bridge picks up dist/ and syncs to Matrix automatically
 ```
 
-### Build entry point
+### Build entry points
 
-[`src/search-page.js`](src/search-page.js) is the Vite entry point. It imports only two files:
+**Search page — [`src/search-page.js`](src/search-page.js)** (built by `vite.config.js`):
 
 ```js
 import "./css/search-widget.css"; // widget styles (compiled → dist/search-page.css)
 import "./js/coveo-search.js"; // search logic  (compiled → dist/search-page.js)
 ```
 
-**Edit the imports there** to add or remove files from the bundle. Output filenames are fixed (no content hashes) so Matrix file asset URLs stay stable across builds.
+**Collection page — [`src/collection-page.js`](src/collection-page.js)** (built by `vite.collection.config.js`):
+
+```js
+import "./css/collection-page.css"; // collection page styles (compiled → dist/collection-page.css)
+```
+
+> `collection-page.js` is CSS-only. No JS logic runs at page load from this bundle. The tiny `dist/collection-page.js` stub is an unavoidable Vite IIFE artefact — it is harmless and its `<script>` tag does not need to be added to the paint layout.
+
+Both `search-widget.css` and `collection-page.css` import `src/css/tokens.css` at their top line. Editing `tokens.css` affects both bundles — the `auto-rebuild-on-src-change` watcher rebuilds both sequentially when `tokens.css` changes.
+
+Output filenames are fixed (no content hashes) so Matrix file asset URLs stay stable across builds.
 
 ---
 
@@ -153,13 +204,16 @@ import "./js/coveo-search.js"; // search logic  (compiled → dist/search-page.j
 document-library/
 │
 ├── src/                                      ← EDIT HERE — all source files are git-tracked
-│   ├── search-page.js                        # ★ BUILD ENTRY — imports search-widget.css + coveo-search.js
+│   ├── search-page.js                        # ★ SEARCH BUILD ENTRY — imports search-widget.css + coveo-search.js
+│   ├── collection-page.js                    # ★ COLLECTION BUILD ENTRY — imports collection-page.css only
 │   ├── search-section.html                   # ★ Search form HTML fragment → dist/search-section.html
 │   ├── search-results.html                   # ★ Results/filters HTML fragment → dist/search-results.html
 │   ├── js/
 │   │   └── coveo-search.js                   # ★ Coveo REST API fetch, filtering, pagination, card/table rendering
 │   ├── css/
-│   │   ├── search-widget.css                 # ★ All widget styles: design tokens, form, .doc-search-* components
+│   │   ├── tokens.css                        # ★ Shared CSS custom properties: colours, typography, borders, spacing
+│   │   ├── search-widget.css                 # ★ Search page styles (imports tokens.css)
+│   │   ├── collection-page.css               # ★ Collection page styles (imports tokens.css)
 │   │   ├── main.css                          # NTG central stylesheet (~13,900 lines) — loaded by Matrix, NOT bundled
 │   │   └── status-toolbar.css                # Dev/test status toolbar styles — loaded by Matrix, NOT bundled
 │   ├── mock/
@@ -187,15 +241,20 @@ document-library/
 │           └── ntgc-image-mask-type-c.svg
 │
 ├── dist/                                     ← BUILD OUTPUT — committed; Git File Bridge deploys these
-│   ├── search-page.js                        # ★ → Matrix paint layout <script>
-│   ├── search-page.css                       # ★ → Matrix paint layout <link>
+│   ├── search-page.js                        # ★ → Search page paint layout <script>
+│   ├── search-page.css                       # ★ → Search page paint layout <link>
+│   ├── collection-page.css                   # ★ → Collection page paint layout <link>
+│   ├── collection-page.js                    # (IIFE stub artefact — not referenced in Matrix)
 │   ├── search-section.html                   # ★ → Matrix nested container (form)
 │   └── search-results.html                   # ★ → Matrix nested container (results)
 │
-├── search-section-preview.html               # Full-page dev preview (references ./dist/)
-├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate preview (gitignored)
+├── search-section-preview.html               # Search page full-fidelity dev preview (references ./dist/)
+├── collection-page-preview.html              # Collection page dev preview (references ./dist/collection-page.css)
+├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate search preview (gitignored)
+├── Agency templates _ Resources.html         # CMS page snapshot used to generate collection preview (gitignored)
 ├── Document search _ DCDD intranet_files/    # Snapshot companion assets (gitignored, reference only)
-├── vite.config.js                            # Vite: dev server + IIFE build + copy-html + auto-rebuild plugins
+├── vite.config.js                            # Vite: search bundle + dev server + copy-html + auto-rebuild watcher
+├── vite.collection.config.js                 # Vite: collection bundle (emptyOutDir: false — NEVER change this)
 ├── package.json                              # npm scripts: dev / build / preview
 ├── .gitignore
 └── README.md
@@ -203,15 +262,178 @@ document-library/
 
 ### What to edit — quick reference
 
-| Goal                                      | File(s) to edit                                       | Then                                 |
-| ----------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| Change search input markup                | `src/search-section.html`                             | `npm run build` → commit src+dist    |
-| Change results/filters/pagination layout  | `src/search-results.html`                             | `npm run build` → commit src+dist    |
-| Change search logic, rendering, filters   | `src/js/coveo-search.js`                              | `npm run build` → commit src+dist    |
-| Change widget styles (tokens, components) | `src/css/search-widget.css`                           | `npm run build` → commit src+dist    |
-| Add a file to the bundle                  | Add `import './...'` to `src/search-page.js`          | `npm run build` → commit src+dist    |
-| Change mock data for local testing        | `src/mock/coveo-search-rest-api-query.json`           | No build needed (fetched at runtime) |
-| Upgrade a vendor library                  | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit             |
+| Goal | File(s) to edit | Then |
+| ---- | --------------- | ---- |
+| Change search input markup | `src/search-section.html` | `npm run build` → commit src+dist |
+| Change results/filters/pagination layout | `src/search-results.html` | `npm run build` → commit src+dist |
+| Change search logic, rendering, filters | `src/js/coveo-search.js` | `npm run build` → commit src+dist |
+| Change search widget styles | `src/css/search-widget.css` | `npm run build` → commit src+dist |
+| Change collection page styles | `src/css/collection-page.css` | `npm run build` → commit src+dist |
+| Change shared design tokens (colours, spacing, typography) | `src/css/tokens.css` | `npm run build` → commit src+dist |
+| Add a file to the search bundle | Add `import './...'` to `src/search-page.js` | `npm run build` → commit src+dist |
+| Add a file to the collection bundle | Add `import './...'` to `src/collection-page.js` | `npm run build` → commit src+dist |
+| Change mock data for local testing | `src/mock/coveo-search-rest-api-query.json` | No build needed (fetched at runtime) |
+| Upgrade a vendor library | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit |
+
+---
+
+---
+
+## CSS Token System
+
+All CSS custom properties (design tokens) are declared in **[`src/css/tokens.css`](src/css/tokens.css)**. Both bundles import this file at their top line (`@import "./tokens.css";`). **Never declare `:root` variables in `search-widget.css` or `collection-page.css` directly** — put them in `tokens.css` so they're available to both.
+
+### Colour tokens
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| `--clr-primary` | `#343741` | NTG body text |
+| `--clr-text-default` | `#102040` | Widget body text, links (`--clr-link-default` is an alias) |
+| `--clr-link-default` | `#102040` | All link colours |
+| `--clr-link-hover` | `#208820` | Link hover state; collection page back-to-search arrow icon |
+| `--clr-text-alt` | `#384560` | Secondary text, input placeholder |
+| `--clr-text-emphasis` | `#208820` | Emphasis / positive text (green) |
+| `--clr-border-subtle` | `#d0e0e0` | Borders, outlines |
+| `--clr-bg-default` | `#ffffff` | Input background |
+| `--clr-bg-shade` | `#f5f5f7` | Card/item background (collection page) |
+| `--clr-bg-shade-alt` | `#ecf0f0` | Results area background (search widget) |
+| `--clr-icon-subtle` | `#878f9f` | Toggle pill (off state) |
+| `--clr-icon-default` | `#208820` | Prev/Next pagination icon hover |
+| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on) |
+
+### Typography tokens
+
+| Token | Value |
+| --- | --- |
+| `--font-size-xs` | `0.875rem` (14 px) |
+| `--font-size-sm` | `1rem` (16 px) |
+| `--font-size-md` | `1.125rem` (18 px) |
+| `--font-size-lg` | `1.25rem` (20 px) |
+| `--font-size-xl` | `1.5rem` (24 px) |
+| `--font-size-2xl` | `1.875rem` (30 px) |
+| `--font-size-3xl` | `2.25rem` (36 px) |
+| `--font-weight-regular` | `400` |
+| `--font-weight-medium` | `500` |
+| `--font-weight-semibold` | `600` |
+| `--font-weight-bold` | `700` |
+
+### Border / radius tokens
+
+| Token | Value |
+| --- | --- |
+| `--radius-sm` | `4px` |
+| `--radius-lg` | `1.75rem` |
+| `--radius-pill` | `3.125rem` |
+
+### Spacing tokens
+
+CSS spacing tokens are defined in `tokens.css`. Use these for margins, paddings, and gaps in **both** bundles.
+
+| Token | Value | Common use |
+| --- | --- | --- |
+| `--sp-xs` | `4px` | Tight gaps |
+| `--sp-sm` | `8px` | Icon gaps, tag horizontal padding |
+| `--sp-md` | `12px` | Card element vertical spacing |
+| `--sp-lg` | `16px` | Table cell padding |
+| `--sp-xl` | `24px` | Back-to-search margin-bottom; card vertical padding |
+| `--sp-2xl` | `32px` | Card horizontal padding |
+| `--sp-3xl` | `48px` | Section vertical padding (desktop) |
+| `--sp-4xl` | `72px` | Large section separations |
+
+---
+
+## Collection Page
+
+Collection pages (e.g. "Agency Templates") list policy documents belonging to a single Coveo collection. They are styled by `dist/collection-page.css` and use class names defined in `src/css/collection-page.css`.
+
+### Vite config: `vite.collection.config.js`
+
+The collection bundle is a separate Vite build that runs **after** the search build. Critical settings:
+
+```js
+build: {
+  outDir: "dist",
+  emptyOutDir: false,   // CRITICAL: prevents wiping search-page.css / search-page.js
+  cssCodeSplit: false,
+  rollupOptions: {
+    input: "src/collection-page.js",
+    output: {
+      format: "iife",
+      name: "DCDDCollectionPage",
+      entryFileNames: "collection-page.js",
+      assetFileNames: (assetInfo) =>
+        assetInfo.name?.endsWith(".css") ? "collection-page.css" : "[name][extname]",
+    },
+  },
+}
+```
+
+**Never remove `emptyOutDir: false`.** Vite defaults to clearing the output directory before each build. Without this flag, the second build (`vite.collection.config.js`) would delete `dist/search-page.css` and `dist/search-page.js` every time.
+
+### BEM classes
+
+#### Back-to-search link (`.back-to-search`)
+
+The "Back to search results" link at the top of every collection page. It is an `<a>` element with Font Awesome Pro left-arrow icon.
+
+```html
+<a href="/dcdd/dev/policy-library/document-search?searchterm=" class="back-to-search">
+  <i class="fas fa-arrow-left"></i>
+  Back to search results
+</a>
+```
+
+| Class | Rule | Notes |
+| --- | --- | --- |
+| `.back-to-search` | `display: inline-flex; align-items: center; gap: 8px; padding: 12px 0; margin-bottom: var(--sp-xl) !important; font-weight: 700; font-size: 16px; color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins |
+| `.back-to-search + h2` | `margin-top: 0 !important` | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
+| `.back-to-search [class*='fa-arrow-left']` | `width: 20px; height: 20px; color: var(--clr-link-hover)` | Green (#208820) icon; uses attribute-substring selector to match Font Awesome `fas fa-arrow-left` and any variant |
+
+> **`main.css` conflict pattern.** The NTG central stylesheet (`main.css`) is loaded by every Matrix page and applies aggressive base styles to `<h2>`, `<a>`, and other elements. When you need to override these in collection-page styles, use `!important`. This is the documented pattern for this codebase — not a hack.
+
+#### Policy documents (`section.policy-documents` / `.policy-document`)
+
+A vertical stack of document cards. Each card links to an individual policy document.
+
+```html
+<section class="policy-documents">
+  <article class="policy-document">
+    <a href="/path/to/document">
+      <div class="policy-document__wrapper">
+        <div class="policy-document__icon">
+          <i class="fas fa-file-pdf"></i>
+        </div>
+        <div class="policy-document__details">
+          <h4>Document title</h4>
+          <span>Last updated: 5 March 2026</span>
+        </div>
+      </div>
+    </a>
+  </article>
+</section>
+```
+
+| Class | Rule |
+| --- | --- |
+| `section.policy-documents` | `display: flex; flex-direction: column; gap: 10px; width: 100%` |
+| `.policy-document` | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch` |
+| `.policy-document a` | `display: inline-flex; align-self: stretch; text-decoration: none` |
+| `.policy-document__wrapper` | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px` |
+| `.policy-document__icon` | `display: flex; align-items: center; gap: 10px` |
+| `.policy-document__details` | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px` |
+| `.policy-document__details h4` | `color: var(--clr-link-default); font-size: 16px; font-weight: 700; text-decoration: underline; line-height: 24px; margin: 0` |
+
+### Preview page: `collection-page-preview.html`
+
+A local dev snapshot of an Agency Templates collection page with `./dist/collection-page.css` injected:
+
+```html
+<link rel="stylesheet" href="./dist/collection-page.css">  <!-- added just before </head> -->
+```
+
+Access it at `http://localhost:3000/collection-page-preview.html` during `npm run dev`. Changes to `collection-page-preview.html` trigger a full browser reload; changes to `src/css/collection-page.css` trigger a collection bundle rebuild then reload.
+
+To regenerate this file from the latest production snapshot, replace the base HTML (`Agency templates _ Resources.html`) and inject the CSS link before `</head>`.
 
 ---
 
@@ -351,36 +573,20 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 
 ## CSS — search-widget.css
 
-`src/css/search-widget.css` is the **only CSS file in the bundle** (`dist/search-page.css`). It is fully self-contained — no dependency on `main.css` or any external stylesheet.
+`src/css/search-widget.css` compiles to `dist/search-page.css`. It imports `src/css/tokens.css` at the top (`@import "./tokens.css";`) — do not re-declare `:root` inside this file. All design tokens live in `tokens.css` (see the [CSS Token System](#css-token-system) section above).
 
-### Design tokens (`:root` block)
+### Internal card spacing
 
-All colours, typography scales, and border radii are defined as CSS custom properties. Key tokens:
+Spacing values inside the widget are written as direct pixel values (not token variables) in the class rules:
 
-| Token                    | Value     | Usage                                |
-| ------------------------ | --------- | ------------------------------------ |
-| `--clr-text-default`     | `#102040` | Body text, links                     |
-| `--clr-text-alt`         | `#384560` | Secondary text, input placeholder    |
-| `--clr-border-subtle`    | `#d0e0e0` | Borders, outlines                    |
-| `--clr-bg-default`       | `#ffffff` | Input background                     |
-| `--clr-bg-shade-alt`     | `#ecf0f0` | Results area background              |
-| `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)              |
-| `--clr-icon-default`     | `#208820` | Prev/Next pagination icon hover      |
-| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on) |
-
-### Spacing scale
-
-CSS custom property spacing tokens are **not** defined in `:root` — spacing values are written directly in class rules. The design system uses named step labels as a shorthand in design discussions:
-
-| Label   | Value  | Common uses in this widget                                                       |
-| ------- | ------ | -------------------------------------------------------------------------------- |
-| `sp-xs` | `8px`  | Tag horizontal padding, icon gaps                                                |
+| Label | Value | Common uses in this widget |
+| ----- | ----- | -------------------------- |
 | `sp-sm` | `12px` | Vertical gap between card elements (title → description → collection → meta row) |
-| `sp-md` | `16px` | Table cell padding                                                               |
-| `sp-lg` | `24px` | Card vertical padding                                                            |
-| `sp-xl` | `32px` | Card horizontal padding                                                          |
+| `sp-md` | `16px` | Table cell padding |
+| `sp-lg` | `24px` | Card vertical padding |
+| `sp-xl` | `32px` | Card horizontal padding |
 
-When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for all bottom margins between elements — title link, description, collection row.
+When changing internal card spacing, use `12px` as the baseline for all bottom margins between elements — title link, description, collection row.
 
 ### BEM classes
 
@@ -537,3 +743,9 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 - **Tags use `outline`, not `border`, and have no `border-radius`.** Both `.doc-search-result__tag` and `.doc-search-table__tag` use `outline: 1px var(--clr-border-subtle) solid; outline-offset: -1px` and `overflow: hidden` to achieve the rectangular border appearance. This matches the Figma "Default" variant of the tag component. Do not add `border-radius` — the design is intentionally square-cornered.
 
 - **`search-section-preview.html` card template is auto-synced.** The `syncPreviewTemplate()` function in `vite.config.js` automatically extracts the result card `<li>` template from `src/search-results.html` and patches it into `search-section-preview.html` on every build and on every `src/*.html` save during dev. You **never need to manually edit `search-section-preview.html`** for card template changes — edit `src/search-results.html` and save. If you need to fully regenerate `search-section-preview.html` from scratch (e.g. after the production CMS page chrome changes significantly): write a Node script that reads `Document search _ DCDD intranet.html`, replaces the CDN widget refs with `./dist/` paths, wraps the `ntgc-search-section` div in `<form id="policy-search-form">`, and injects the contents of `src/search-results.html` after the form — then ensure the result card template block starts with `<!-- Result card template` so `syncPreviewTemplate()` can locate it. See `build-preview.js` (deleted after use) in git history for reference.
+
+- **`emptyOutDir: false` in `vite.collection.config.js` is non-negotiable.** Vite clears `outDir` before each build by default. The collection config writes to `dist/` — the same directory as the search config. Without `emptyOutDir: false`, running the second build (or doing `npm run build`) would silently delete `dist/search-page.css` and `dist/search-page.js`, leaving Matrix without its search assets. The collection config has a comment marking this; do not remove or change it.
+
+- **`!important` overrides in `collection-page.css` are intentional.** `main.css` (the NTG central stylesheet, ~13 900 lines, loaded by the Matrix paint layout) applies aggressive base styles — `margin-top` on `<h2>`, default link colours, paragraph spacing. These cannot be overridden without `!important` from a stylesheet that is loaded at the same cascade level. Current intentional `!important` usages: `.back-to-search { margin-bottom: var(--sp-xl) !important }` and `.back-to-search + h2 { margin-top: 0 !important }`. Do not remove them.
+
+- **Watcher routing in `vite.config.js`.** The `auto-rebuild-on-src-change` plugin detects which config to use based on the changed filename: `tokens.css` changes rebuild both configs sequentially; `collection-page.css` changes rebuild only `vite.collection.config.js`; all other CSS/JS changes rebuild only the search config (`vite.config.js`). The `isCollectionCss`, `isTokens`, `isSrcHtml`, and `isPreviewHtml` boolean flags in the `change` handler implement this. If you add new CSS files, update the watcher routing in `vite.config.js` accordingly.
