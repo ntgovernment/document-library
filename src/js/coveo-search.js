@@ -38,6 +38,8 @@
  * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
  * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
+ * result.raw.resourcetype             — file type key (e.g. "pdf_file", "word_doc"); mapped to uppercase label
+ * result.raw.resourcefilesize         — human-readable file size (e.g. "354.2 KB")
  *
  * ── DOM CONTRACT ─────────────────────────────────────────────────────────────
  * IDs and attributes that must exist in the page HTML:
@@ -59,7 +61,8 @@
  *
  * Card template data-ref slots (inside .search-template):
  *   [data-ref="search-result-link"]            <a> href = asseturl
- *   [data-ref="search-result-title"]           document title text
+ *   [data-ref="search-result-title"]           document title with formatFileMeta() suffix
+ *                                                e.g. "My Document (PDF, 354.2 KB)"
  *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
  *   [data-ref="search-result-description"]     description / excerpt text
  *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
@@ -70,6 +73,7 @@
  *
  * Table columns (built by renderTableResults into #doc-search-table-body <tr> rows):
  *   .doc-search-table__col-title       title cell — <a class="doc-search-table__title-link">
+ *                                        title text includes formatFileMeta() suffix
  *   .doc-search-table__col-updated     last-updated plain text
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
  *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
@@ -97,9 +101,23 @@
  * directly from the submit handler.
  *
  * ── KEY CONSTANTS ────────────────────────────────────────────────────────────
- *   RESULTS_PER_PAGE_CARD   10  — cards shown per page
- *   RESULTS_PER_PAGE_TABLE  15  — rows shown per page in table view
- *   MAX_FACET_VISIBLE        5  — facet items visible before "Show all"
+ *   RESULTS_PER_PAGE_CARD   10      — cards shown per page
+ *   RESULTS_PER_PAGE_TABLE  15      — rows shown per page in table view
+ *   MAX_FACET_VISIBLE        5      — facet items visible before "Show all"
+ *   FILE_TYPE_LABELS        Object  — maps raw.resourcetype keys to uppercase display labels
+ *                                     (e.g. "pdf_file" → "PDF", "word_doc" → "DOCX")
+ *                                     Add entries here to support additional file types.
+ *
+ * ── TITLE COMPOSITION ────────────────────────────────────────────────────────
+ * Card and table titles are both composed as:
+ *   (raw.resourcefriendlytitle || result.title) + formatFileMeta(raw)
+ * formatFileMeta() appends a parenthetical suffix when raw.resourcetype and/or
+ * raw.resourcefilesize are present — for example:
+ *   "My Document (PDF, 354.2 KB)"   — both type and size present
+ *   "My Document (DOCX)"            — type only (size absent)
+ *   "My Document (58.5 KB)"         — size only (type unmapped or absent)
+ *   "My Document"                   — neither present
+ * To add a new file type mapping, add an entry to FILE_TYPE_LABELS.
  *
  * ── MODULE STATE ─────────────────────────────────────────────────────────────
  *   originalResults  Array   — raw API response order; restored on "relevancy" sort
@@ -141,10 +159,21 @@
   var currentQuery = "";
 
   // ── URL builder ──────────────────────────────────────────────────────────────
+  /**
+   * Builds the Coveo search endpoint URL for the given query string.
+   * @param {string} query  Raw (unencoded) search term.
+   * @returns {string} Full URL with ?searchterm= query parameter.
+   */
   function buildCoveoUrl(query) {
     return COVEO_BASE_URL + "?searchterm=" + encodeURIComponent(query);
   }
 
+  /**
+   * Returns the value of a URL query parameter from the current page URL,
+   * or null when the parameter is absent.
+   * @param {string} name  Parameter name (e.g. "searchterm", "sort").
+   * @returns {string|null}
+   */
   function getUrlParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
@@ -164,6 +193,14 @@
     "November",
     "December",
   ];
+  /**
+   * Formats a Coveo date string as "D\u00a0MMMM YYYY" (e.g. "5\u00a0March 2026").
+   * The non-breaking space between day and month prevents line-wrapping at that point.
+   * Returns the original string unchanged when it does not match the expected format,
+   * and returns "" when dateStr is falsy.
+   * @param {string} dateStr  Date in "YYYY-MM-DD HH:mm:ss" format (raw.resourceupdated).
+   * @returns {string}
+   */
   function formatDate(dateStr) {
     if (!dateStr) return "";
     // Parse "YYYY-MM-DD HH:mm:ss" and format as "D\u00a0MMMM YYYY"
@@ -177,16 +214,48 @@
     return dateStr;
   }
 
+  // ── File type labels ──────────────────────────────────────────────────────────
+  var FILE_TYPE_LABELS = {
+    pdf_file: "PDF",
+    word_doc: "DOCX",
+    excel: "XLSX",
+    powerpoint: "PPTX",
+  };
+
+  /**
+   * Builds a parenthetical file-type/size suffix for appending to a document title.
+   * Uses FILE_TYPE_LABELS to map raw.resourcetype to a display label (e.g. "PDF").
+   * Returns an empty string when neither raw.resourcetype nor raw.resourcefilesize
+   * is present.
+   * @param {Object} raw  result.raw from the Coveo API response.
+   * @returns {string}  e.g. " (PDF, 354.2 KB)", " (DOCX)", " (58.5 KB)", or "".
+   */
+  function formatFileMeta(raw) {
+    var ext = FILE_TYPE_LABELS[raw.resourcetype] || "";
+    var size = raw.resourcefilesize || "";
+    if (ext && size) return " (" + ext + ", " + size + ")";
+    if (ext) return " (" + ext + ")";
+    if (size) return " (" + size + ")";
+    return "";
+  }
+
   // ── View helpers ─────────────────────────────────────────────────────────────
+  /** Returns true when the results column is in table view (data-view="table"). */
   function isTableView() {
     return $("#doc-search-results-col").attr("data-view") === "table";
   }
 
+  /** Returns the correct results-per-page constant for the active view. */
   function resultsPerPage() {
     return isTableView() ? RESULTS_PER_PAGE_TABLE : RESULTS_PER_PAGE_CARD;
   }
 
   // ── Filter building ──────────────────────────────────────────────────────────
+  /**
+   * Rebuilds both the Type and Category facet lists from the given result set.
+   * Delegates to buildFacet() for each facet field.
+   * @param {Array} results  Full (unfiltered) result set to count facet values from.
+   */
   function buildFilters(results) {
     buildFacet(
       results,
@@ -271,7 +340,13 @@
     }
   }
 
-  // ── Sort ─────────────────────────────────────────────────────────────────────
+  // ── Sort ────────────────────────────────────────────────────────────────────
+  /**
+   * Rebuilds allResults from originalResults according to currentSort.
+   * "relevancy" restores the original API order. "date descending" / "date ascending"
+   * sort on raw.resourceupdated using lexicographic comparison, which is correct for
+   * the "YYYY-MM-DD HH:mm:ss" format.
+   */
   function applySort() {
     if (currentSort === "relevancy") {
       allResults = originalResults.slice();
@@ -287,9 +362,11 @@
   }
 
   // ── Apply filters ────────────────────────────────────────────────────────────
-  // Filters allResults into filteredResults using the active facet sets, then
-  // renders page 1. Facets are ANDed; values within a facet are ORed.
-  // An empty set means no filter is applied for that facet (all values pass).
+  /**
+   * Filters allResults into filteredResults using the active facet Sets, then
+   * renders page 1. Facets are ANDed across types; values within a facet are ORed.
+   * An empty Set means no filter is applied for that facet (all values pass).
+   */
   function applyFilters() {
     filteredResults = allResults.filter(function (r) {
       var raw = r.raw || {};
@@ -310,7 +387,12 @@
     renderPage(1);
   }
 
-  // ── Render a page ────────────────────────────────────────────────────────────
+  // ── Render a page ──────────────────────────────────────────────────────────
+  /**
+   * Slices filteredResults to the requested page, renders card or table rows,
+   * then updates the summary line and pagination bar.
+   * @param {number} page  1-based page number to display.
+   */
   function renderPage(page) {
     currentPage = page;
     var perPage = resultsPerPage();
@@ -328,10 +410,12 @@
   }
 
   // ── Card results ─────────────────────────────────────────────────────────────
-  // Renders results as cloned .search-template <li> cards in #doc-search-results-list.
-  // Collection row is shown only when both collectionname AND collectionurl are present:
-  //   href → raw.collectionurl   (direct collection page URL)
-  //   text → raw.collectionname  (human-readable collection name)
+  /**
+   * Renders a page slice as cloned .search-template <li> cards into
+   * #doc-search-results-list. Collection row is shown only when both
+   * raw.collectionname AND raw.collectionurl are present.
+   * @param {Array} results  Slice of filteredResults for the current page.
+   */
   function renderCardResults(results) {
     var $list = $("#doc-search-results-list");
     var $template = $(".search-template");
@@ -350,7 +434,10 @@
       $item.find('[data-ref="search-result-link"]').attr("href", assetUrl);
       $item
         .find('[data-ref="search-result-title"]')
-        .text(raw.resourcefriendlytitle || result.title || "");
+        .text(
+          (raw.resourcefriendlytitle || result.title || "") +
+            formatFileMeta(raw),
+        );
 
       // External link icon
       var isExternal =
@@ -395,9 +482,11 @@
   }
 
   // ── Table results ─────────────────────────────────────────────────────────────
-  // Renders results as <tr> rows in #doc-search-table-body.
-  // Collection cell: href = raw.collectionurl; text = raw.collectionname.
-  // Both card and table views use collectionname for display text.
+  /**
+   * Renders a page slice as <tr> rows into #doc-search-table-body.
+   * Collection cell: href = raw.collectionurl; text = raw.collectionname.
+   * @param {Array} results  Slice of filteredResults for the current page.
+   */
   function renderTableResults(results) {
     var $tbody = $("#doc-search-table-body");
     $tbody.empty();
@@ -407,7 +496,8 @@
       var assetUrl = raw.asseturl || result.clickUri || "#";
       var collectionName = raw.collectionname || "";
       var collectionUrl = raw.collectionurl || "#";
-      var title = raw.resourcefriendlytitle || result.title || "";
+      var title =
+        (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
       var doctype = raw.resourcedoctype || "";
       var updated = formatDate(raw.resourceupdated);
 
@@ -455,6 +545,10 @@
   }
 
   // ── Results summary line ──────────────────────────────────────────────────────
+  /**
+   * Updates #doc-search-results-summary with "Showing X–Y of Z results" text,
+   * or "No results found." when filteredResults is empty.
+   */
   function updateResultsSummary() {
     var perPage = resultsPerPage();
     var total = filteredResults.length;
@@ -478,7 +572,11 @@
     }
   }
 
-  // ── Pagination ────────────────────────────────────────────────────────────────
+  // ── Pagination ──────────────────────────────────────────────────────────────
+  /**
+   * Rebuilds the #doc-search-pagination nav with Prev, numbered, and Next buttons.
+   * Clears the nav and returns early when there is only one page.
+   */
   function renderPagination() {
     var $nav = $("#doc-search-pagination");
     var perPage = resultsPerPage();
@@ -538,9 +636,14 @@
     $nav.append($next);
   }
 
-  // Returns a mixed array of page numbers (Number) and gap markers ("…") for the
-  // pagination bar. Always includes page 1, the last page, and current ±1; inserts
-  // "…" where the gap is larger than one page. Returns a full range when total ≤ 7.
+  /**
+   * Returns a mixed array of page numbers and "…" gap markers for the pagination bar.
+   * Always includes page 1, the last page, and current ±1. Inserts "…" where the gap
+   * is larger than one page. Returns a flat consecutive range when total ≤ 7.
+   * @param {number} current  Active page (1-based).
+   * @param {number} total    Total number of pages.
+   * @returns {Array<number|string>}  e.g. [1, "…", 4, 5, 6, "…", 12]
+   */
   function buildPageRange(current, total) {
     if (total <= 7) {
       return range(1, total);
@@ -556,6 +659,12 @@
     return pages;
   }
 
+  /**
+   * Returns an inclusive array of sequential integers from `from` to `to`.
+   * @param {number} from  Start value (inclusive).
+   * @param {number} to    End value (inclusive).
+   * @returns {number[]}
+   */
   function range(from, to) {
     var arr = [];
     for (var i = from; i <= to; i++) arr.push(i);
@@ -563,20 +672,34 @@
   }
 
   // ── User message (error / no results) ────────────────────────────────────────
+  /**
+   * Sets the #doc-search-user-message text. Pass an empty string or omit `msg`
+   * to clear any existing message.
+   * @param {string} [msg]  Text to display (e.g. an error string or "No results found.").
+   */
   function setUserMessage(msg) {
     $("#doc-search-user-message").text(msg || "");
   }
 
   // ── HTML helpers ─────────────────────────────────────────────────────────────
-  // escHtml  — encodes a plain string for safe insertion as HTML text content.
+  /**
+   * Encodes a plain string for safe insertion as HTML text content.
+   * Uses jQuery's .text()/.html() round-trip to escape &, <, >, and related chars.
+   * @param {string} str
+   * @returns {string} HTML-escaped string.
+   */
   function escHtml(str) {
     return $("<span>")
       .text(str || "")
       .html();
   }
 
-  // escAttr  — encodes a plain string for safe use inside an HTML attribute value.
-  //            Extends escHtml by also escaping " and ' characters.
+  /**
+   * Encodes a plain string for safe use inside an HTML attribute value.
+   * Extends escHtml by additionally escaping `"` (&quot;) and `'` (&#39;).
+   * @param {string} str
+   * @returns {string} Attribute-safe escaped string.
+   */
   function escAttr(str) {
     return $("<span>")
       .text(str || "")
@@ -586,12 +709,13 @@
   }
 
   // ── Core search ──────────────────────────────────────────────────────────────
-  // Fetches from the Coveo API (or mock fixture in dev mode), then calls:
-  //   applySort()    — orders allResults based on currentSort
-  //   buildFilters() — rebuilds facet checkboxes from the full result set
-  //   applyFilters() — applies active facet filters and renders page 1
-  // Existing filter/sort state is preserved across calls — clear activeTypeFilters /
-  // activeCategoryFilters before calling if a clean filter slate is needed.
+  /**
+   * Fetches results from the Coveo API (or mock fixture in dev) for the given query,
+   * then chains: applySort() → buildFilters() → applyFilters() to render page 1.
+   * Existing filter/sort state is preserved across calls; clear activeTypeFilters and
+   * activeCategoryFilters before calling if a clean filter slate is needed.
+   * @param {string} query  Raw (unencoded) search term. Pass "" to return all documents.
+   */
   function runSearch(query) {
     currentQuery = query;
 
