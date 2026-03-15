@@ -34,8 +34,7 @@
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
  * result.raw.resourcecollectionname   — "Category" facet value (used as filter key)
- * result.raw.collectionname           — human-readable collection name; used as card view display text
- *                                        NOTE: table view uses resourcecollectionname instead
+ * result.raw.collectionname           — human-readable collection name; used as display text in both card and table views
  * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
  * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
@@ -75,9 +74,7 @@
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
  *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
  *                                        href = raw.collectionurl
- *                                        text = raw.resourcecollectionname
- *                                        NOTE: table uses resourcecollectionname (facet key) for display;
- *                                        card view uses raw.collectionname instead
+ *                                        text = raw.collectionname
  *
  * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
  *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
@@ -153,13 +150,31 @@
   }
 
   // ── Date formatting ──────────────────────────────────────────────────────────
+  var MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
   function formatDate(dateStr) {
-    if (window.moment && dateStr) {
-      return window
-        .moment(dateStr, "YYYY-MM-DD HH:mm:ss")
-        .format("D MMMM YYYY");
+    if (!dateStr) return "";
+    // Parse "YYYY-MM-DD HH:mm:ss" and format as "D\u00a0MMMM YYYY"
+    // Non-breaking space between day and month prevents them wrapping onto separate lines
+    var m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      var day = parseInt(m[3], 10);
+      var month = MONTHS[parseInt(m[2], 10) - 1];
+      return day + "\u00a0" + month + " " + m[1];
     }
-    return dateStr || "";
+    return dateStr;
   }
 
   // ── View helpers ─────────────────────────────────────────────────────────────
@@ -381,10 +396,8 @@
 
   // ── Table results ─────────────────────────────────────────────────────────────
   // Renders results as <tr> rows in #doc-search-table-body.
-  // Collection cell: href = raw.collectionurl; text = raw.resourcecollectionname.
-  // Unlike card view which uses raw.collectionname for display text,
-  // table view re-uses the facet key (resourcecollectionname) so the displayed
-  // name matches the Category filter labels exactly.
+  // Collection cell: href = raw.collectionurl; text = raw.collectionname.
+  // Both card and table views use collectionname for display text.
   function renderTableResults(results) {
     var $tbody = $("#doc-search-table-body");
     $tbody.empty();
@@ -392,7 +405,7 @@
     results.forEach(function (result) {
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
-      var collectionName = raw.resourcecollectionname || "";
+      var collectionName = raw.collectionname || "";
       var collectionUrl = raw.collectionurl || "#";
       var title = raw.resourcefriendlytitle || result.title || "";
       var doctype = raw.resourcedoctype || "";

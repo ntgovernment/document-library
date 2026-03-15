@@ -42,6 +42,8 @@ The page provides staff with a filterable, full-text search interface over DCDD 
 | `dist/search-section.html` | `search-section.html` | Squiz Matrix nested container — search form                       |
 | `dist/search-results.html` | `search-results.html` | Squiz Matrix nested container — results area, filters, pagination |
 
+> **`dist/` must be rebuilt before committing HTML fragment changes.** The `auto-rebuild-on-src-change` Vite plugin only watches `src/js/` and `src/css/`. Changes to `src/search-section.html` or `src/search-results.html` require a manual `npm run build` to update `dist/`.
+
 **`dist/` is intentionally committed to git.** Git File Bridge reads from the repository, so the built output must be present in the commit. It is **not** in `.gitignore`.
 
 The HTML page template and vendor/third-party scripts are managed separately inside Matrix and are not deployed via this repository.
@@ -67,7 +69,13 @@ Both `dist/search-section.html` and `dist/search-results.html` are **bare HTML f
 | `dist/search-section.html` | `src/search-section.html` | Nested container above main body |
 | `dist/search-results.html` | `src/search-results.html` | Nested container in main body    |
 
-Both files are copied verbatim from `src/` to `dist/` by the `copy-search-section` Vite plugin — no transformation occurs.
+Both HTML files are copied verbatim from `src/` to `dist/` by the `copy-search-section` Vite plugin — no transformation occurs.
+
+### Vite plugins
+
+1. **`copy-search-section`** (`closeBundle` hook): after each build, copies `src/search-section.html` → `dist/search-section.html` and `src/search-results.html` → `dist/search-results.html` verbatim.
+
+2. **`auto-rebuild-on-src-change`** (`configureServer` hook, dev server only): watches `src/js/**/*.js` and `src/css/**/*.css`. On any change, runs Vite's programmatic `build()` to regenerate `dist/search-page.js` and `dist/search-page.css`, then sends `server.hot.send({ type: "full-reload" })` to the browser. A `building` guard prevents concurrent builds. Logged to the dev terminal as `[auto-rebuild] <file> changed — rebuilding…` / `[auto-rebuild] done, reloading browser`.
 
 ---
 
@@ -89,7 +97,7 @@ npm run preview # serve the dist/ build locally for final checks
 
 `npm run dev` opens `search-section-preview.html` automatically. This is a **full-fidelity preview page** generated from the production CMS snapshot (`Document search _ DCDD intranet.html`). It includes the real Matrix page chrome (header, nav, footer) and references `./dist/search-page.css` and `./dist/search-page.js` locally, so you can test the complete search interaction without VPN or CMS access.
 
-**HMR is active** — edits to any file in `src/` rebuild and reload the browser instantly.
+**Auto-rebuild is active** — edits to any file in `src/js/` or `src/css/` automatically rebuild `dist/` and trigger a full browser reload. Edits to `src/search-section.html` or `src/search-results.html` are picked up directly by the dev server without a rebuild (Vite serves them as static files), but run `npm run build` once after editing them to keep `dist/` in sync before committing.
 
 ### Mock data vs production API
 
@@ -183,7 +191,7 @@ document-library/
 ├── search-section-preview.html               # Full-page dev preview (references ./dist/)
 ├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate preview (gitignored)
 ├── Document search _ DCDD intranet_files/    # Snapshot companion assets (gitignored, reference only)
-├── vite.config.js                            # Vite: dev server + IIFE build + copy-html plugin
+├── vite.config.js                            # Vite: dev server + IIFE build + copy-html + auto-rebuild plugins
 ├── package.json                              # npm scripts: dev / build / preview
 ├── .gitignore
 └── README.md
@@ -235,6 +243,8 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 
 **Behaviour on page load:** `coveo-search.js` fires `runSearch()` unconditionally on `$(document).ready`. It reads `?searchterm=` and `?sort=` from the URL and pre-fills `#search` accordingly. The search form submit handler is attached only if `#policy-search-form` is present — its absence does not block results from loading.
 
+**Date formatting:** Dates from `raw.resourceupdated` (`YYYY-MM-DD HH:mm:ss`) are formatted as `D MMMM YYYY` (e.g. `5 March 2026`) using a native JS regex — no external library. A non-breaking space (`\u00a0`) is inserted between the day number and month name so they never wrap onto separate lines.
+
 **Search flow (submit → redirect → load):** When the form is submitted, the handler does **not** call `runSearch()` in-place. Instead it redirects to `window.location.pathname + "?searchterm=" + encodeURIComponent(query)`. The resulting page load reads `?searchterm=` and calls `runSearch()` via the normal init path. This keeps the URL bookmarkable and shareable with a single source of truth for the active query.
 
 **Module state (inside the IIFE):**
@@ -252,21 +262,21 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 
 **`data-ref` bindings** (attributes on elements inside `.search-template`, populated by `renderCardResults()`):
 
-| `data-ref` value                | Coveo API field                                                 |
-| ------------------------------- | --------------------------------------------------------------- |
-| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`             |
-| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                   |
-| `search-result-extlink`         | Shown (unhidden) when URL does not contain `internal.nt.gov.au` |
-| `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                   |
-| `search-result-collection-row`  | Hidden when `raw.resourcecollectionname` is empty               |
-| `search-result-collection`      | `raw.resourcecollectionname`                                    |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`                             |
-| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)              |
-| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `moment.js` if available   |
+| `data-ref` value                | Coveo API field                                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                               |
+| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                     |
+| `search-result-extlink`         | Shown (unhidden) when URL does not contain `internal.nt.gov.au`                                                                                   |
+| `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                     |
+| `search-result-collection-row`  | Hidden when `raw.resourcecollectionname` is empty                                                                                                 |
+| `search-result-collection`      | `raw.resourcecollectionname`                                                                                                                      |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`                                                                                                               |
+| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                |
+| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break |
 
 **External link detection:** A result is considered external if its URL does not contain `internal.nt.gov.au`. External results show an inline SVG external-link icon (`.doc-search-result__ext-icon`) — there is no Font Awesome dependency in this bundle.
 
-**Sort change behaviour:** Changing the sort `<select>` calls `applySort()` then `applyFilters()` — no re-fetch, no network request. Active Type and Category filter checkboxes are preserved. "Relevance" restores the original API response order (`originalResults`); "Newest first" / "Oldest first" sort `allResults` by `raw.resourceupdated` (format `YYYY-MM-DD HH:mm:ss` — lexicographic comparison gives correct chronological order).
+**Sort change behaviour:** Changing the sort `<select>` calls `applySort()` then `applyFilters()` — **no Coveo API re-fetch, no network request**. Active Type and Category filter checkboxes are preserved. "Relevance" restores the original API response order (`originalResults`); "Newest first" / "Oldest first" sort `allResults` by `raw.resourceupdated` using lexicographic string comparison (the `YYYY-MM-DD HH:mm:ss` format makes lexicographic order identical to chronological order).
 
 ### HTML fragments
 
@@ -297,22 +307,22 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 
 ## Key Element IDs
 
-| ID                             | Purpose                                                                    |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| `#policy-search-form`          | Search form — submit triggers `runSearch()`                                |
-| `#search`                      | Free-text input (`name="query"`); pre-filled from `?searchterm=` URL param |
-| `#doc-search-results-col`      | Results column; `data-view` attr controls card/table                       |
-| `#initialLoadingSpinner`       | Shown during fetch; hidden on response                                     |
-| `#doc-search-user-message`     | Error / no-results message                                                 |
-| `#doc-search-results-summary`  | "Showing X–Y of N results" line                                            |
-| `#doc-search-sort-select`      | Sort `<select>` — change re-fetches from Coveo                             |
-| `#doc-search-view-toggle`      | Card/table toggle pill button                                              |
-| `#doc-search-results-list`     | Card results `<ul>`                                                        |
-| `#doc-search-table-body`       | Table results `<tbody>`                                                    |
-| `#doc-search-pagination`       | Pagination `<nav>`                                                         |
-| `#doc-search-sidebar`          | Filter sidebar `<aside>`                                                   |
-| `#doc-search-type-filters`     | Type facet checkbox list                                                   |
-| `#doc-search-category-filters` | Category facet checkbox list                                               |
+| ID                             | Purpose                                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `#policy-search-form`          | Search form — submit triggers `runSearch()`                                                  |
+| `#search`                      | Free-text input (`name="query"`); pre-filled from `?searchterm=` URL param                   |
+| `#doc-search-results-col`      | Results column; `data-view` attr controls card/table                                         |
+| `#initialLoadingSpinner`       | Shown during fetch; hidden on response                                                       |
+| `#doc-search-user-message`     | Error / no-results message                                                                   |
+| `#doc-search-results-summary`  | "Showing X–Y of N results" line                                                              |
+| `#doc-search-sort-select`      | Sort `<select>` — change triggers client-side `applySort()` + `applyFilters()` (no API call) |
+| `#doc-search-view-toggle`      | Card/table toggle pill button                                                                |
+| `#doc-search-results-list`     | Card results `<ul>`                                                                          |
+| `#doc-search-table-body`       | Table results `<tbody>`                                                                      |
+| `#doc-search-pagination`       | Pagination `<nav>`                                                                           |
+| `#doc-search-sidebar`          | Filter sidebar `<aside>`                                                                     |
+| `#doc-search-type-filters`     | Type facet checkbox list                                                                     |
+| `#doc-search-category-filters` | Category facet checkbox list                                                                 |
 
 ---
 
@@ -351,55 +361,55 @@ All colours, typography scales, and border radii are defined as CSS custom prope
 
 #### Results widget (`doc-search-*`)
 
-| Class                                 | Element                                                    |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `.doc-search-outer`                   | Outer section wrapper — shaded bg, padded                  |
-| `.doc-search-layout`                  | Two-column flex (results col + sidebar)                    |
-| `.doc-search-results-col`             | Results column; `[data-view="table"]` activates table mode |
-| `.doc-search-results-header`          | Bar above results — summary text + controls                |
-| `.doc-search-results-summary`         | "Showing X–Y of N results" `<p>`                           |
-| `.doc-search-results-controls`        | Flex row — sort select + view toggle                       |
-| `.doc-search-sort-select`             | Sort dropdown `<select>`                                   |
-| `.doc-search-view-toggle`             | Card/table toggle pill `<button>`                          |
-| `.doc-search-view-toggle__pill`       | The sliding oval indicator                                 |
-| `.doc-search-view-toggle__label`      | "Table view" / "Card view" text                            |
-| `.doc-search-spinner`                 | Loading spinner wrapper                                    |
-| `.doc-search-spinner__ring`           | CSS `@keyframes` ring animation                            |
-| `.doc-search-user-message`            | Error / empty-state message                                |
-| `.doc-search-results-list`            | Card results `<ul>`                                        |
-| `.doc-search-result`                  | Single result card `<li>`                                  |
-| `.doc-search-result__title-link`      | Card title `<a>`                                           |
-| `.doc-search-result__ext-icon`        | Inline SVG external-link icon (shown for external URLs)    |
-| `.doc-search-result__description`     | Excerpt/description `<p>`                                  |
-| `.doc-search-result__collection-row`  | "Collection: …" row                                        |
-| `.doc-search-result__collection-link` | Link to the parent collection                              |
-| `.doc-search-result__meta`            | Flex row — doctype tag + last-updated date                 |
-| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy")                 |
-| `.doc-search-result__updated`         | Last-updated date `<span>`                                 |
-| `.doc-search-table-wrap`              | Overflow wrapper for table (hidden in card view)           |
-| `.doc-search-table`                   | Results `<table>` (visible only when `data-view="table"`)  |
-| `.doc-search-table__col-title`        | Title column — 50% width                                   |
-| `.doc-search-table__col-updated`      | Last Updated column                                        |
-| `.doc-search-table__col-type`         | Type column                                                |
-| `.doc-search-table__col-collection`   | Collection column                                          |
-| `.doc-search-table__title-link`       | Title `<a>` inside table row                               |
-| `.doc-search-table__tag`              | Doctype `<span>` inside table row                          |
-| `.doc-search-pagination`              | Pagination `<nav>`                                         |
-| `.doc-search-pagination__btn`         | Page number / prev / next `<button>`                       |
-| `.doc-search-pagination__btn--active` | Currently selected page button                             |
-| `.doc-search-pagination__btn--prev`   | "‹ Prev" button                                            |
-| `.doc-search-pagination__btn--next`   | "Next ›" button                                            |
-| `.doc-search-pagination__ellipsis`    | `…` gap `<span>` between page numbers                      |
-| `.doc-search-sidebar`                 | Filter sidebar `<aside>`                                   |
-| `.doc-search-filter-group`            | A single facet group (Type or Category)                    |
-| `.doc-search-filter-group__title`     | Facet group heading `<h3>`                                 |
-| `.doc-search-facet-list`              | Checkbox list `<ul>`                                       |
-| `.doc-search-facet-item`              | Checkbox label wrapper `<label>`                           |
-| `.doc-search-facet-item__label`       | Facet value text                                           |
-| `.doc-search-facet-item__count`       | Result count `(N)` in parentheses                          |
-| `.doc-search-facet-hidden`            | Applied to facet items beyond `MAX_FACET_VISIBLE` (5)      |
-| `.doc-search-show-all`                | "Show all (N)" button — removes `.doc-search-facet-hidden` |
-| `.search-template`                    | Hidden `<li>` template — cloned per result by JS           |
+| Class                                 | Element                                                                                                                                                                                                                            |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.doc-search-outer`                   | Outer section wrapper — shaded bg, padded                                                                                                                                                                                          |
+| `.doc-search-layout`                  | Two-column flex (results col + sidebar)                                                                                                                                                                                            |
+| `.doc-search-results-col`             | Results column; `[data-view="table"]` activates table mode                                                                                                                                                                         |
+| `.doc-search-results-header`          | Bar above results — summary text + controls                                                                                                                                                                                        |
+| `.doc-search-results-summary`         | "Showing X–Y of N results" `<p>`                                                                                                                                                                                                   |
+| `.doc-search-results-controls`        | Flex row — sort select + view toggle                                                                                                                                                                                               |
+| `.doc-search-sort-select`             | Sort dropdown `<select>`                                                                                                                                                                                                           |
+| `.doc-search-view-toggle`             | Card/table toggle pill `<button>`                                                                                                                                                                                                  |
+| `.doc-search-view-toggle__pill`       | The sliding oval indicator                                                                                                                                                                                                         |
+| `.doc-search-view-toggle__label`      | "Table view" / "Card view" text                                                                                                                                                                                                    |
+| `.doc-search-spinner`                 | Loading spinner wrapper                                                                                                                                                                                                            |
+| `.doc-search-spinner__ring`           | CSS `@keyframes` ring animation                                                                                                                                                                                                    |
+| `.doc-search-user-message`            | Error / empty-state message                                                                                                                                                                                                        |
+| `.doc-search-results-list`            | Card results `<ul>`                                                                                                                                                                                                                |
+| `.doc-search-result`                  | Single result card `<li>`                                                                                                                                                                                                          |
+| `.doc-search-result__title-link`      | Card title `<a>`                                                                                                                                                                                                                   |
+| `.doc-search-result__ext-icon`        | Inline SVG external-link icon (shown for external URLs)                                                                                                                                                                            |
+| `.doc-search-result__description`     | Excerpt/description `<p>`                                                                                                                                                                                                          |
+| `.doc-search-result__collection-row`  | "Collection: …" row                                                                                                                                                                                                                |
+| `.doc-search-result__collection-link` | Link to the parent collection                                                                                                                                                                                                      |
+| `.doc-search-result__meta`            | Flex row — doctype tag + last-updated date                                                                                                                                                                                         |
+| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy")                                                                                                                                                                                         |
+| `.doc-search-result__updated`         | Last-updated date wrapper `<div>` — contains literal text `Last updated:` and an inner `<span [data-ref="search-result-last-updated"]>` with the formatted date (card view only; table view renders plain text directly in `<td>`) |
+| `.doc-search-table-wrap`              | Overflow wrapper for table (hidden in card view)                                                                                                                                                                                   |
+| `.doc-search-table`                   | Results `<table>` (visible only when `data-view="table"`)                                                                                                                                                                          |
+| `.doc-search-table__col-title`        | Title column — 50% width                                                                                                                                                                                                           |
+| `.doc-search-table__col-updated`      | Last Updated column                                                                                                                                                                                                                |
+| `.doc-search-table__col-type`         | Type column                                                                                                                                                                                                                        |
+| `.doc-search-table__col-collection`   | Collection column                                                                                                                                                                                                                  |
+| `.doc-search-table__title-link`       | Title `<a>` inside table row                                                                                                                                                                                                       |
+| `.doc-search-table__tag`              | Doctype `<span>` inside table row                                                                                                                                                                                                  |
+| `.doc-search-pagination`              | Pagination `<nav>`                                                                                                                                                                                                                 |
+| `.doc-search-pagination__btn`         | Page number / prev / next `<button>`                                                                                                                                                                                               |
+| `.doc-search-pagination__btn--active` | Currently selected page button                                                                                                                                                                                                     |
+| `.doc-search-pagination__btn--prev`   | "‹ Prev" button                                                                                                                                                                                                                    |
+| `.doc-search-pagination__btn--next`   | "Next ›" button                                                                                                                                                                                                                    |
+| `.doc-search-pagination__ellipsis`    | `…` gap `<span>` between page numbers                                                                                                                                                                                              |
+| `.doc-search-sidebar`                 | Filter sidebar `<aside>`                                                                                                                                                                                                           |
+| `.doc-search-filter-group`            | A single facet group (Type or Category)                                                                                                                                                                                            |
+| `.doc-search-filter-group__title`     | Facet group heading `<h3>`                                                                                                                                                                                                         |
+| `.doc-search-facet-list`              | Checkbox list `<ul>`                                                                                                                                                                                                               |
+| `.doc-search-facet-item`              | Checkbox label wrapper `<label>`                                                                                                                                                                                                   |
+| `.doc-search-facet-item__label`       | Facet value text                                                                                                                                                                                                                   |
+| `.doc-search-facet-item__count`       | Result count `(N)` in parentheses                                                                                                                                                                                                  |
+| `.doc-search-facet-hidden`            | Applied to facet items beyond `MAX_FACET_VISIBLE` (5)                                                                                                                                                                              |
+| `.doc-search-show-all`                | "Show all (N)" button — removes `.doc-search-facet-hidden`                                                                                                                                                                         |
+| `.search-template`                    | Hidden `<li>` template — cloned per result by JS                                                                                                                                                                                   |
 
 **Responsive breakpoint:** At ≤ 900px, `.doc-search-layout` switches from row to column and the sidebar moves below the results.
 
@@ -446,7 +456,7 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **`runSearch()` fires unconditionally.** The `$(document).ready` handler calls `runSearch()` regardless of whether `#policy-search-form` exists on the page. The form submit handler is wired up separately, only if `#policy-search-form` is found — and it **redirects** to `?searchterm=<encoded_query>` rather than calling `runSearch()` directly. The redirect triggers a fresh page load which re-enters via the init path. This allows the results area to work as a standalone nested container without needing the form on the same page load, and keeps the URL bookmarkable.
 
-- **`moment.js` is optional.** `formatDate()` checks `window.moment` before calling it. If moment is not available, the raw date string from `raw.resourceupdated` is displayed as-is.
+- **`moment.js` is not used by this bundle.** `formatDate()` uses a native regex (`/^(\d{4})-(\d{2})-(\d{2})/`) to parse and reformat `raw.resourceupdated`. There is no `window.moment` dependency — dates display correctly whether or not moment.js is loaded by the Matrix page.
 
 - **`@supports` CSS warning at build time.** Vite/esbuild emits `[WARNING] Expected identifier but found "@supports"` from `src/css/main.css`. This is a pre-existing IE-targeting vendor pattern (`-ms-ime-align`) and does not affect functionality. Safe to ignore — `main.css` is not in the bundle anyway.
 
