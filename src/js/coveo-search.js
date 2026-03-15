@@ -389,6 +389,11 @@
    * renders page 1. Facets are ANDed across types; values within a facet are ORed.
    * An empty Set means no filter is applied for that facet (all values pass).
    */
+  function updateMobileFilterCount() {
+    var total = activeTypeFilters.size + activeCategoryFilters.size;
+    $("#doc-search-filter-count").text(total > 0 ? "(" + total + ")" : "");
+  }
+
   function applyFilters() {
     filteredResults = allResults.filter(function (r) {
       var raw = r.raw || {};
@@ -407,6 +412,7 @@
       return true;
     });
     renderPage(1);
+    updateMobileFilterCount();
   }
 
   // ── Render a page ──────────────────────────────────────────────────────────
