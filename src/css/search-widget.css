@@ -629,10 +629,10 @@
 }
 
 .doc-search-filter-group__toggle {
-  display: flex;
-  justify-content: space-between;
+  display: inline-flex;
+  justify-content: flex-start;
   align-items: center;
-  width: 100%;
+  width: auto;
   background: none;
   border: none;
   padding: 0;
@@ -652,12 +652,12 @@
 .doc-search-filter-group__chevron {
   flex-shrink: 0;
   transition: transform 0.2s ease;
-  transform: rotate(0deg); /* points down = expanded view */
+  transform: rotate(0deg); /* points down = collapsed */
 }
 
-.doc-search-filter-group__toggle[aria-expanded="false"]
+.doc-search-filter-group__toggle[aria-expanded="true"]
   .doc-search-filter-group__chevron {
-  transform: rotate(180deg); /* points up = collapsed */
+  transform: rotate(180deg); /* points up = expanded */
 }
 
 .doc-search-filter-group__toggle[aria-expanded="false"]
@@ -740,9 +740,13 @@
   font-size: 16px;
   color: var(--clr-text-default, #102040);
   font-family: Roboto, sans-serif;
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   line-height: 24px;
   position: relative;
+}
+
+.doc-search-sort-option__label {
+  font-weight: var(--font-weight-regular) !important;
 }
 
 /* Hide native radio */
@@ -761,21 +765,21 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid var(--clr-text-default, #102040);
-  background: transparent;
+  border: none;
+  background: url("data:image/svg+xml,<svg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'><circle cx='16.0007' cy='16' r='12.8' fill='white'/><path d='M16.0007 28.8C8.93068 28.8 3.20068 23.07 3.20068 16C3.20068 8.92995 8.93068 3.19995 16.0007 3.19995C23.0707 3.19995 28.8007 8.92995 28.8007 16C28.8007 23.07 23.0707 28.8 16.0007 28.8ZM16.0007 5.59995C10.2557 5.59995 5.60068 10.255 5.60068 16C5.60068 21.745 10.2557 26.4 16.0007 26.4C21.7457 26.4 26.4007 21.745 26.4007 16C26.4007 10.255 21.7457 5.59995 16.0007 5.59995Z' fill='%23102040'/></svg>")
+    center / contain no-repeat;
   flex-shrink: 0;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  transition: background 0.15s;
   box-sizing: border-box;
 }
 
-/* Selected state — solid filled circle */
+/* Selected state — ring with inner dot */
 .doc-search-sort-option
   input[type="radio"]:checked
   ~ .doc-search-sort-option__radio {
-  background: var(--clr-link-default, #102040);
-  border-color: var(--clr-link-default, #102040);
+  border: none;
+  background: url("data:image/svg+xml,<svg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M16.0007 28.8C23.0707 28.8 28.8007 23.07 28.8007 16C28.8007 8.92995 23.0707 3.19995 16.0007 3.19995C8.93068 3.19995 3.20068 8.92995 3.20068 16C3.20068 23.07 8.93068 28.8 16.0007 28.8ZM16.0007 11.2C18.6507 11.2 20.8007 13.35 20.8007 16C20.8007 18.65 18.6507 20.8 16.0007 20.8C13.3507 20.8 11.2007 18.65 11.2007 16C11.2007 13.35 13.3507 11.2 16.0007 11.2Z' fill='%23102040'/></svg>")
+    center / contain no-repeat;
 }
 
 /* Focus ring */
