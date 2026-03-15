@@ -344,6 +344,20 @@ All colours, typography scales, and border radii are defined as CSS custom prope
 | `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)              |
 | `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on) |
 
+### Spacing scale
+
+CSS custom property spacing tokens are **not** defined in `:root` — spacing values are written directly in class rules. The design system uses named step labels as a shorthand in design discussions:
+
+| Label   | Value  | Common uses in this widget                                   |
+| ------- | ------ | ------------------------------------------------------------ |
+| `sp-xs` | `8px`  | Tag horizontal padding, icon gaps                            |
+| `sp-sm` | `12px` | Vertical gap between card elements (title → description → collection → meta row) |
+| `sp-md` | `16px` | Table cell padding                                           |
+| `sp-lg` | `24px` | Card vertical padding                                        |
+| `sp-xl` | `32px` | Card horizontal padding                                      |
+
+When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for all bottom margins between elements — title link, description, collection row.
+
 ### BEM classes
 
 #### Search form (`ntgc-search-section`)
@@ -378,13 +392,13 @@ All colours, typography scales, and border radii are defined as CSS custom prope
 | `.doc-search-user-message`            | Error / empty-state message                                                                                                                                                                                                        |
 | `.doc-search-results-list`            | Card results `<ul>`                                                                                                                                                                                                                |
 | `.doc-search-result`                  | Single result card `<li>`                                                                                                                                                                                                          |
-| `.doc-search-result__title-link`      | Card title `<a>`                                                                                                                                                                                                                   |
+| `.doc-search-result__title-link`      | Card title `<a>` — `display: flex` (block-level) so the following `<p>` sits flush below with no browser-default paragraph margin-top |
 | `.doc-search-result__ext-icon`        | Inline SVG external-link icon (shown for external URLs)                                                                                                                                                                            |
-| `.doc-search-result__description`     | Excerpt/description `<p>`                                                                                                                                                                                                          |
+| `.doc-search-result__description`     | Excerpt/description `<p>` — `margin: 12px 0 12px !important` overrides browser `<p>` default top margin                                                                                                                           |
 | `.doc-search-result__collection-row`  | "Collection: …" row                                                                                                                                                                                                                |
 | `.doc-search-result__collection-link` | Link to the parent collection                                                                                                                                                                                                      |
 | `.doc-search-result__meta`            | Flex row — doctype tag + last-updated date                                                                                                                                                                                         |
-| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy")                                                                                                                                                                                         |
+| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy") — `display: inline-flex`, `outline: 1px solid var(--clr-border-subtle)` (not `border`), **no `border-radius`**, 12px/700 uppercase Roboto |
 | `.doc-search-result__updated`         | Last-updated date wrapper `<div>` — contains literal text `Last updated:` and an inner `<span [data-ref="search-result-last-updated"]>` with the formatted date (card view only; table view renders plain text directly in `<td>`) |
 | `.doc-search-table-wrap`              | Overflow wrapper for table (hidden in card view)                                                                                                                                                                                   |
 | `.doc-search-table`                   | Results `<table>` (visible only when `data-view="table"`)                                                                                                                                                                          |
@@ -393,7 +407,7 @@ All colours, typography scales, and border radii are defined as CSS custom prope
 | `.doc-search-table__col-type`         | Type column                                                                                                                                                                                                                        |
 | `.doc-search-table__col-collection`   | Collection column                                                                                                                                                                                                                  |
 | `.doc-search-table__title-link`       | Title `<a>` inside table row                                                                                                                                                                                                       |
-| `.doc-search-table__tag`              | Doctype `<span>` inside table row                                                                                                                                                                                                  |
+| `.doc-search-table__tag`              | Doctype `<span>` inside table row — same style as `.doc-search-result__tag` (`inline-flex`, `outline`, no `border-radius`) |
 | `.doc-search-pagination`              | Pagination `<nav>`                                                                                                                                                                                                                 |
 | `.doc-search-pagination__btn`         | Page number / prev / next `<button>`                                                                                                                                                                                               |
 | `.doc-search-pagination__btn--active` | Currently selected page button                                                                                                                                                                                                     |
@@ -463,5 +477,11 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 - **Vendor SVGs in `src/vendor/img/`.** The four SVG mask files were previously referenced as `/?a=XXXXXX` Matrix asset URLs in production. They are now local files referenced by relative path from `src/css/main.css`. If the NTG design system is updated, replace the files in `src/vendor/img/` and rebuild.
 
 - **`.oft` link handling.** `global-v2.js` (loaded by Matrix, not bundled) automatically adds a `download` attribute to any `<a>` pointing to a `.oft` (Outlook Template) file.
+
+- **Card element vertical spacing is `12px` uniform (`sp-sm`).** Title link, description, and collection row each carry `margin-bottom: 12px`. The description `<p>` also carries `margin-top: 12px !important` — the `!important` is required because browsers default `<p>` to `margin-top: 1em` and the parent block context makes that apply even when the title link sets `margin-bottom: 0`.
+
+- **`.doc-search-result__title-link` must be `display: flex`, not `display: inline-flex`.** As a block-level flex container it establishes a new block formatting context, preventing the browser's default `<p>` `margin-top: 1em` from appearing above the description. Changing it back to `inline-flex` reintroduces the unwanted top gap before the description.
+
+- **Tags use `outline`, not `border`, and have no `border-radius`.** Both `.doc-search-result__tag` and `.doc-search-table__tag` use `outline: 1px var(--clr-border-subtle) solid; outline-offset: -1px` and `overflow: hidden` to achieve the rectangular border appearance. This matches the Figma "Default" variant of the tag component. Do not add `border-radius` — the design is intentionally square-cornered.
 
 - **`search-section-preview.html` is generated from the production HTML snapshot.** To regenerate it after the production page changes significantly: write a Node script that reads `Document search _ DCDD intranet.html`, replaces the CDN widget refs with `./dist/` paths, wraps the `ntgc-search-section` div in `<form id="policy-search-form">`, and injects the contents of `src/search-results.html` after the form. See `build-preview.js` (deleted after use) in git history for reference.

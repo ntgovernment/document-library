@@ -327,7 +327,7 @@
 
 /* Title link */
 .doc-search-result__title-link {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
   gap: 6px;
   font-size: var(--font-size-md);
@@ -336,7 +336,7 @@
   text-decoration: underline;
   text-decoration-color: currentColor;
   line-height: var(--line-height-tight);
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 
 .doc-search-result__title-link:hover,
@@ -356,14 +356,14 @@
   font-size: var(--font-size-sm);
   color: var(--clr-text-alt);
   line-height: var(--line-height-base);
-  margin: 0 0 10px;
+  margin: 12px 0 12px !important;
 }
 
 /* Collection link row */
 .doc-search-result__collection-row {
   font-size: var(--font-size-xs);
   color: var(--clr-text-alt);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .doc-search-result__collection-row[hidden] {
@@ -389,16 +389,23 @@
 
 /* Document type tag */
 .doc-search-result__tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border: 1px solid var(--clr-text-alt);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background: var(--clr-bg-default, white);
+  outline: 1px var(--clr-border-subtle, #d0e0e0) solid;
+  outline-offset: -1px;
+  overflow: hidden;
+  font-size: 12px;
+  font-family: Roboto, sans-serif;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--clr-text-alt);
-  line-height: 1.6;
+  line-height: 16px;
+  letter-spacing: 1px;
+  color: var(--clr-text-alt, #384560);
+  word-wrap: break-word;
 }
 
 /* Last updated */
@@ -511,16 +518,23 @@
 
 /* Type tag in table */
 .doc-search-table__tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border: 1px solid var(--clr-text-alt);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background: var(--clr-bg-default, white);
+  outline: 1px var(--clr-border-subtle, #d0e0e0) solid;
+  outline-offset: -1px;
+  overflow: hidden;
+  font-size: 12px;
+  font-family: Roboto, sans-serif;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--clr-text-alt);
-  white-space: nowrap;
+  line-height: 16px;
+  letter-spacing: 1px;
+  color: var(--clr-text-alt, #384560);
+  word-wrap: break-word;
 }
 
 /* Updated date in table */
