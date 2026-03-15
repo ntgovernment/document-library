@@ -13,15 +13,28 @@
             <!-- User message -->
             <div class="doc-search-user-message" id="doc-search-user-message"></div>
 
+            <!-- Mobile filter button (hidden on desktop) -->
+            <button type="button" class="doc-search-mobile-filter-btn" id="doc-search-mobile-filter-btn"
+                aria-label="Open filters" aria-expanded="false" aria-controls="doc-search-drawer">
+                <span class="doc-search-mobile-filter-btn__left">
+                    <svg class="doc-search-mobile-filter-btn__icon" aria-hidden="true" width="20" height="20"
+                        viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 4h18M5 10h10M9 16h2" stroke="currentColor" stroke-width="1.75"
+                            stroke-linecap="round" />
+                    </svg>
+                    <span class="doc-search-mobile-filter-btn__label">Filters</span>
+                </span>
+                <svg class="doc-search-mobile-filter-btn__chevron" aria-hidden="true" width="16" height="16"
+                    viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </button>
+
             <!-- Results header -->
             <div class="doc-search-results-header">
                 <p class="doc-search-results-summary" id="doc-search-results-summary"></p>
                 <div class="doc-search-results-controls">
-                    <select class="doc-search-sort-select" id="doc-search-sort-select" aria-label="Sort results by">
-                        <option value="relevancy">Relevance</option>
-                        <option value="date descending">Newest first</option>
-                        <option value="date ascending">Oldest first</option>
-                    </select>
                     <button type="button" class="doc-search-view-toggle" id="doc-search-view-toggle"
                         aria-pressed="false" aria-label="Toggle table view">
                         <span class="doc-search-view-toggle__pill"></span>
@@ -56,6 +69,39 @@
         <!-- Filter sidebar -->
         <aside class="doc-search-sidebar" id="doc-search-sidebar" aria-label="Filter results">
             <div class="doc-search-filter-group">
+                <button type="button" class="doc-search-filter-group__toggle" aria-expanded="true"
+                    aria-controls="doc-search-sort-group">
+                    <span>Sort by</span>
+                    <svg class="doc-search-filter-group__chevron" aria-hidden="true" width="16" height="16"
+                        viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.72 5.5L8 11.5L14.28 5.5H1.72Z" />
+                    </svg>
+                </button>
+                <div class="doc-search-sort-group" role="radiogroup" aria-label="Sort results by"
+                    id="doc-search-sort-group">
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="relevancy" checked>
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Relevance</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="date descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Last updated</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="alpha ascending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">A – Z</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="alpha descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Z – A</span>
+                    </label>
+                </div>
+            </div>
+            <div class="doc-search-filter-group">
                 <h3 class="doc-search-filter-group__title">Type</h3>
                 <ul class="doc-search-facet-list" id="doc-search-type-filters" role="group"
                     aria-label="Filter by document type"></ul>
@@ -68,6 +114,86 @@
         </aside>
 
     </div><!-- /.doc-search-layout -->
+
+    <!-- Mobile filter drawer overlay -->
+    <div class="doc-search-drawer-overlay" id="doc-search-drawer-overlay" aria-hidden="true"></div>
+
+    <!-- Mobile filter drawer -->
+    <div class="doc-search-drawer" id="doc-search-drawer" role="dialog" aria-modal="true" aria-label="Filters"
+        aria-hidden="true">
+
+        <!-- Drawer header -->
+        <div class="doc-search-drawer__header">
+            <span class="doc-search-drawer__title">Filters</span>
+            <button type="button" class="doc-search-drawer__close" id="doc-search-drawer-close"
+                aria-label="Close filters">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Drawer body (scrollable) -->
+        <div class="doc-search-drawer__body">
+            <div class="doc-search-filter-group">
+                <button type="button" class="doc-search-filter-group__toggle" aria-expanded="true"
+                    aria-controls="doc-search-drawer-sort-group">
+                    <span>Sort by</span>
+                    <svg class="doc-search-filter-group__chevron" aria-hidden="true" width="16" height="16"
+                        viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1.72 5.5L8 11.5L14.28 5.5H1.72Z" />
+                    </svg>
+                </button>
+                <div class="doc-search-sort-group" role="radiogroup" aria-label="Sort results by"
+                    id="doc-search-drawer-sort-group">
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="relevancy" checked>
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Relevance</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="date descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Last updated</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="alpha ascending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">A – Z</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="alpha descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Z – A</span>
+                    </label>
+                </div>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Type</h3>
+                <ul class="doc-search-facet-list" id="doc-search-drawer-type-filters" role="group"
+                    aria-label="Filter by document type"></ul>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Category</h3>
+                <ul class="doc-search-facet-list" id="doc-search-drawer-category-filters" role="group"
+                    aria-label="Filter by category"></ul>
+            </div>
+            <button type="button" class="doc-search-drawer__clear" id="doc-search-drawer-clear">
+                Clear all filters
+            </button>
+        </div>
+
+        <!-- Drawer footer -->
+        <div class="doc-search-drawer__footer">
+            <button type="button" class="doc-search-drawer__apply" id="doc-search-drawer-apply">
+                Apply filters
+            </button>
+        </div>
+
+    </div><!-- /.doc-search-drawer -->
+
 </div><!-- /.doc-search-outer -->
 
 <!-- Result card template (hidden — cloned per result by coveo-search.js) -->

@@ -45,23 +45,32 @@ export default defineConfig({
       configureServer(server) {
         let building = false;
 
-        server.watcher.add(["src/js/**/*.js", "src/css/**/*.css", "src/*.html"]);
+        server.watcher.add([
+          "src/js/**/*.js",
+          "src/css/**/*.css",
+          "src/*.html",
+        ]);
 
         server.watcher.on("change", async (file) => {
           const normalised = file.replace(/\\/g, "/");
           const isHtml =
             normalised.includes("/src/") && normalised.endsWith(".html");
           const isJsOrCss =
-            normalised.includes("/src/js/") ||
-            normalised.includes("/src/css/");
+            normalised.includes("/src/js/") || normalised.includes("/src/css/");
 
           if (!isJsOrCss && !isHtml) return;
 
           if (isHtml && !isJsOrCss) {
             // Just recopy HTML files — no need to rebuild the JS bundle
             try {
-              copyFileSync("src/search-section.html", "dist/search-section.html");
-              copyFileSync("src/search-results.html", "dist/search-results.html");
+              copyFileSync(
+                "src/search-section.html",
+                "dist/search-section.html",
+              );
+              copyFileSync(
+                "src/search-results.html",
+                "dist/search-results.html",
+              );
               syncPreviewTemplate();
               server.config.logger.info(
                 `[auto-rebuild] ${file} changed — HTML recopied, reloading browser`,

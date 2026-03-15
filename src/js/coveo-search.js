@@ -33,7 +33,7 @@
  * result.raw.asseturl                 — primary document URL
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
- * result.raw.resourcecollectionname   — "Category" facet value (used as filter key)
+ * result.raw.collectionname           — "Category" facet value (used as filter key)
  * result.raw.collectionname           — human-readable collection name; used as display text in both card and table views
  * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
  * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
@@ -103,7 +103,7 @@
  * ── KEY CONSTANTS ────────────────────────────────────────────────────────────
  *   RESULTS_PER_PAGE_CARD   10      — cards shown per page
  *   RESULTS_PER_PAGE_TABLE  15      — rows shown per page in table view
- *   MAX_FACET_VISIBLE        5      — facet items visible before "Show all"
+ *   MAX_FACET_VISIBLE        7      — facet items visible before "Show all"
  *   FILE_TYPE_LABELS        Object  — maps raw.resourcetype keys to uppercase display labels
  *                                     (e.g. "pdf_file" → "PDF", "word_doc" → "DOCX")
  *                                     Add entries here to support additional file types.
@@ -146,7 +146,7 @@
 
   var RESULTS_PER_PAGE_CARD = 10;
   var RESULTS_PER_PAGE_TABLE = 15;
-  var MAX_FACET_VISIBLE = 5;
+  var MAX_FACET_VISIBLE = 7;
 
   // ── Module state ─────────────────────────────────────────────────────────────
   var originalResults = []; // API response order — restored when sort = relevancy
@@ -265,7 +265,7 @@
     );
     buildFacet(
       results,
-      "resourcecollectionname",
+      "collectionname",
       "#doc-search-category-filters",
       activeCategoryFilters,
     );
@@ -350,6 +350,25 @@
   function applySort() {
     if (currentSort === "relevancy") {
       allResults = originalResults.slice();
+    } else if (
+      currentSort === "alpha ascending" ||
+      currentSort === "alpha descending"
+    ) {
+      allResults = originalResults.slice().sort(function (a, b) {
+        var ta = (
+          (a.raw || {}).resourcefriendlytitle ||
+          a.title ||
+          ""
+        ).toLowerCase();
+        var tb = (
+          (b.raw || {}).resourcefriendlytitle ||
+          b.title ||
+          ""
+        ).toLowerCase();
+        return currentSort === "alpha ascending"
+          ? ta.localeCompare(tb)
+          : tb.localeCompare(ta);
+      });
     } else {
       allResults = originalResults.slice().sort(function (a, b) {
         var da = (a.raw || {}).resourceupdated || "";
@@ -378,7 +397,7 @@
       }
       if (
         activeCategoryFilters.size > 0 &&
-        !activeCategoryFilters.has(raw.resourcecollectionname)
+        !activeCategoryFilters.has(raw.collectionname)
       ) {
         return false;
       }
@@ -765,9 +784,122 @@
       });
   }
 
+  // ── Mobile drawer ────────────────────────────────────────────────────────────
+
+  /**
+   * Populates the drawer's facet lists from the current allResults set,
+   * mirroring the active sidebar filter state.
+   */
+  function buildDrawerFilters() {
+    buildFacet(
+      allResults,
+      "resourcedoctype",
+      "#doc-search-drawer-type-filters",
+      activeTypeFilters,
+    );
+    buildFacet(
+      allResults,
+      "collectionname",
+      "#doc-search-drawer-category-filters",
+      activeCategoryFilters,
+    );
+    $('input[name="doc-search-drawer-sort"][value="' + currentSort + '"]').prop(
+      "checked",
+      true,
+    );
+  }
+
+  /** Opens the mobile filter drawer. */
+  function openDrawer() {
+    buildDrawerFilters();
+    $("#doc-search-drawer").addClass("is-open").attr("aria-hidden", "false");
+    $("#doc-search-drawer-overlay")
+      .addClass("is-open")
+      .attr("aria-hidden", "false");
+    $("#doc-search-mobile-filter-btn").attr("aria-expanded", "true");
+    // Move focus into the drawer
+    $("#doc-search-drawer-close").trigger("focus");
+    // Prevent body scroll
+    $("body").css("overflow", "hidden");
+  }
+
+  /** Closes the mobile filter drawer. */
+  function closeDrawer() {
+    $("#doc-search-drawer").removeClass("is-open").attr("aria-hidden", "true");
+    $("#doc-search-drawer-overlay")
+      .removeClass("is-open")
+      .attr("aria-hidden", "true");
+    $("#doc-search-mobile-filter-btn").attr("aria-expanded", "false");
+    $("body").css("overflow", "");
+    $("#doc-search-mobile-filter-btn").trigger("focus");
+  }
+
+  // Open drawer
+  $(document).on("click", "#doc-search-mobile-filter-btn", openDrawer);
+
+  // Close drawer via close button or overlay tap
+  $(document).on(
+    "click",
+    "#doc-search-drawer-close, #doc-search-drawer-overlay",
+    closeDrawer,
+  );
+
+  // Close drawer on Escape key
+  $(document).on("keydown", function (e) {
+    if (e.key === "Escape" && $("#doc-search-drawer").hasClass("is-open")) {
+      closeDrawer();
+    }
+  });
+
+  // Apply filters from drawer
+  $(document).on("click", "#doc-search-drawer-apply", function () {
+    // Read sort
+    var drawerSort =
+      $('input[name="doc-search-drawer-sort"]:checked').val() || "relevancy";
+    currentSort = drawerSort;
+    $('input[name="doc-search-sort"][value="' + drawerSort + '"]').prop(
+      "checked",
+      true,
+    );
+
+    // Rebuild filter sets from drawer checkboxes
+    activeTypeFilters.clear();
+    activeCategoryFilters.clear();
+    $("#doc-search-drawer [data-facet]").each(function () {
+      if ($(this).is(":checked")) {
+        var field = $(this).data("facet");
+        var value = $(this).data("value");
+        if (field === "resourcedoctype") {
+          activeTypeFilters.add(value);
+        } else {
+          activeCategoryFilters.add(value);
+        }
+      }
+    });
+
+    applySort();
+    applyFilters();
+    // Rebuild sidebar filters to reflect new checkbox state
+    buildFilters(allResults);
+    closeDrawer();
+  });
+
+  // Clear all filters inside drawer (resets UI without applying)
+  $(document).on("click", "#doc-search-drawer-clear", function () {
+    $("#doc-search-drawer [data-facet]").prop("checked", false);
+    $('input[name="doc-search-drawer-sort"][value="relevancy"]').prop(
+      "checked",
+      true,
+    );
+  });
+
   // ── Event: checkbox filter change ────────────────────────────────────────────
   $(document).on("change", "[data-facet]", function () {
     var $cb = $(this);
+    // Inside the drawer, changes are applied only via the "Apply filters" button
+    if ($cb.closest("#doc-search-drawer").length) {
+      return;
+    }
     var field = $cb.data("facet");
     var value = $cb.data("value");
     var set =
@@ -791,8 +923,17 @@
     $btn.closest("li").remove();
   });
 
+  // ── Event: Sort by expand/collapse ─────────────────────────────────────────
+  $(document).on("click", ".doc-search-filter-group__toggle", function () {
+    var $btn = $(this);
+    $btn.attr(
+      "aria-expanded",
+      $btn.attr("aria-expanded") === "true" ? "false" : "true",
+    );
+  });
+
   // ── Event: sort change ───────────────────────────────────────────────────────
-  $(document).on("change", "#doc-search-sort-select", function () {
+  $(document).on("change", 'input[name="doc-search-sort"]', function () {
     currentSort = $(this).val();
     applySort();
     applyFilters();
@@ -814,6 +955,24 @@
     renderPage(1);
   });
 
+  // ── Reset table view on mobile ────────────────────────────────────────────────
+  // If the viewport drops to mobile width while table view is active, switch back
+  // to card view so the hidden toggle doesn't leave a broken table-only state.
+  (function () {
+    var mq = window.matchMedia("(max-width: 900px)");
+    function resetTableViewOnMobile(e) {
+      if (
+        e.matches &&
+        $("#doc-search-results-col").attr("data-view") === "table"
+      ) {
+        $("#doc-search-results-col").attr("data-view", "card");
+        $("#doc-search-view-toggle").attr("aria-pressed", "false");
+        renderPage(currentPage);
+      }
+    }
+    mq.addEventListener("change", resetTableViewOnMobile);
+  })();
+
   // ── Init ─────────────────────────────────────────────────────────────────────
   $(document).ready(function () {
     // Read initial state from URL params
@@ -822,7 +981,10 @@
 
     if (urlSort) {
       currentSort = urlSort;
-      $("#doc-search-sort-select").val(urlSort);
+      $('input[name="doc-search-sort"][value="' + urlSort + '"]').prop(
+        "checked",
+        true,
+      );
     }
 
     // Pre-fill search input if present

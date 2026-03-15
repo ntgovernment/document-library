@@ -243,7 +243,7 @@ This is a Squiz Matrix page asset on the same origin (`internal.nt.gov.au`) that
 
 > **Do not use `?a=<assetId>` shorthand.** The `?a=944069` asset shorthand resolves to the document-search page itself and returns the full page HTML — not the Coveo JSON. This causes a `SyntaxError: Unexpected token '<'` in the fetch pipeline.
 
-Sorting is performed **client-side** via `applySort()` after every fetch and after every sort `<select>` change — no re-fetch is needed. `originalResults` holds the API response order; `allResults` is a sorted copy used for rendering.
+Sorting is performed **client-side** via `applySort()` after every fetch and after every sort radio button change — no re-fetch is needed. `originalResults` holds the API response order; `allResults` is a sorted copy used for rendering.
 
 **Behaviour on page load:** `coveo-search.js` fires `runSearch()` unconditionally on `$(document).ready`. It reads `?searchterm=` and `?sort=` from the URL and pre-fills `#search` accordingly. The search form submit handler is attached only if `#policy-search-form` is present — its absence does not block results from loading.
 
@@ -261,7 +261,7 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `currentPage`           | Number | Current pagination page (1-based)                                         |
 | `activeTypeFilters`     | Set    | Checked values under the Type facet                                       |
 | `activeCategoryFilters` | Set    | Checked values under the Category facet                                   |
-| `currentSort`           | String | Active sort — "relevancy" \| "date descending" \| "date ascending"        |
+| `currentSort`           | String | Active sort — `"relevancy"` \| `"date descending"` \| `"alpha ascending"` \| `"alpha descending"` |
 | `currentQuery`          | String | Last query string passed to `runSearch()`                                 |
 
 **`data-ref` bindings** (attributes on elements inside `.search-template`, populated by `renderCardResults()`):
@@ -272,15 +272,15 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                     |
 | `search-result-extlink`         | Shown (unhidden) when URL does not contain `internal.nt.gov.au`                                                                                   |
 | `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                     |
-| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` or `raw.collectionurl` is empty — both must be present for the row to show                                                                                               |
-| `search-result-collection`      | `raw.collectionname` — human-readable display name of the collection                                                                                                                                                              |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text                                                                                                                                                        |
+| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` or `raw.collectionurl` is empty — both must be present for the row to show              |
+| `search-result-collection`      | `raw.collectionname` — human-readable display name of the collection                                                                              |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text                                                                        |
 | `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                |
 | `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break |
 
 **External link detection:** A result is considered external if its URL does not contain `internal.nt.gov.au`. External results show an inline SVG external-link icon (`.doc-search-result__ext-icon`) — there is no Font Awesome dependency in this bundle.
 
-**Sort change behaviour:** Changing the sort `<select>` calls `applySort()` then `applyFilters()` — **no Coveo API re-fetch, no network request**. Active Type and Category filter checkboxes are preserved. "Relevance" restores the original API response order (`originalResults`); "Newest first" / "Oldest first" sort `allResults` by `raw.resourceupdated` using lexicographic string comparison (the `YYYY-MM-DD HH:mm:ss` format makes lexicographic order identical to chronological order).
+**Sort change behaviour:** Changing the sort radio buttons (sidebar: `input[name="doc-search-sort"]`; mobile drawer: `input[name="doc-search-drawer-sort"]`) calls `applySort()` then `applyFilters()` — **no Coveo API re-fetch, no network request**. Active Type and Category filter checkboxes are preserved. Four options: **Relevance** (`relevancy`) restores the original API response order (`originalResults`); **Last updated** (`date descending`) sorts `allResults` by `raw.resourceupdated` descending using lexicographic comparison (the `YYYY-MM-DD HH:mm:ss` format makes lexicographic order identical to chronological order); **A – Z** (`alpha ascending`) and **Z – A** (`alpha descending`) sort by `raw.resourcefriendlytitle` (falling back to `result.title`) using `String.localeCompare()`.
 
 ### HTML fragments
 
@@ -297,14 +297,23 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 - `#initialLoadingSpinner` — CSS ring spinner; visible while fetch is in progress
 - `#doc-search-user-message` — error / no-results message area
 - `#doc-search-results-summary` — "Showing X–Y of N results" text
-- `#doc-search-sort-select` — sort `<select>` (Relevance / Newest first / Oldest first)
+- `#doc-search-mobile-filter-btn` — "Filters" pill button (hidden on desktop, visible ≤ 900 px); slides in the filter drawer
 - `#doc-search-view-toggle` — card/table toggle pill button (`aria-pressed="true"` = table active)
 - `#doc-search-results-list` — `<ul>` where card result `<li>` items are appended
-- `#doc-search-table` / `#doc-search-table-body` — `<table>` rendered in table view
+- `#doc-search-table` / `#doc-search-table-body` — `<table>` rendered in table view (hidden on mobile)
 - `#doc-search-pagination` — pagination `<nav>` (prev/next buttons + numbered pages with ellipsis)
-- `#doc-search-sidebar` — filter sidebar containing two facet groups (Type, Category)
+- `#doc-search-sidebar` — filter sidebar containing Sort by (collapsible), Type, and Category facet groups; hidden on mobile
+- `#doc-search-sort-group` — `<div role="radiogroup">` for sidebar sort; inputs use `name="doc-search-sort"` (values: `relevancy`, `date descending`, `alpha ascending`, `alpha descending`)
 - `#doc-search-type-filters` — `<ul>` of checkbox filter items for `resourcedoctype`
-- `#doc-search-category-filters` — `<ul>` of checkbox filter items for `resourcecollectionname`
+- `#doc-search-category-filters` — `<ul>` of checkbox filter items for `collectionname`
+- `#doc-search-drawer` — slide-in filter drawer (`role="dialog" aria-modal="true"`); shown/hidden via `aria-hidden`
+- `#doc-search-drawer-overlay` — semi-transparent backdrop; click closes the drawer
+- `#doc-search-drawer-close` — × close button in the drawer header
+- `#doc-search-drawer-sort-group` — drawer copy of the sort radio group; inputs use `name="doc-search-drawer-sort"`
+- `#doc-search-drawer-type-filters` — drawer copy of the Type facet checkbox list
+- `#doc-search-drawer-category-filters` — drawer copy of the Category facet checkbox list
+- `#doc-search-drawer-clear` — "Clear all filters" button in the drawer body — resets sort + all checkboxes
+- `#doc-search-drawer-apply` — "Apply filters" button in the drawer footer — syncs drawer state back to sidebar
 - `.search-template` (`hidden`) — result card template `<li>` cloned by JS per result
 
 ---
@@ -318,15 +327,24 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 | `#doc-search-results-col`      | Results column; `data-view` attr controls card/table                                         |
 | `#initialLoadingSpinner`       | Shown during fetch; hidden on response                                                       |
 | `#doc-search-user-message`     | Error / no-results message                                                                   |
-| `#doc-search-results-summary`  | "Showing X–Y of N results" line                                                              |
-| `#doc-search-sort-select`      | Sort `<select>` — change triggers client-side `applySort()` + `applyFilters()` (no API call) |
-| `#doc-search-view-toggle`      | Card/table toggle pill button                                                                |
-| `#doc-search-results-list`     | Card results `<ul>`                                                                          |
-| `#doc-search-table-body`       | Table results `<tbody>`                                                                      |
-| `#doc-search-pagination`       | Pagination `<nav>`                                                                           |
-| `#doc-search-sidebar`          | Filter sidebar `<aside>`                                                                     |
-| `#doc-search-type-filters`     | Type facet checkbox list                                                                     |
-| `#doc-search-category-filters` | Category facet checkbox list                                                                 |
+| `#doc-search-results-summary`          | "Showing X–Y of N results" line                                                                                              |
+| `#doc-search-sort-group`               | Sidebar sort radio group `<div role="radiogroup">`; `input[name="doc-search-sort"]` change triggers `applySort()` + `applyFilters()` (no API call) |
+| `#doc-search-mobile-filter-btn`        | Mobile-only "Filters" pill button (hidden on desktop); opens the filter drawer                                               |
+| `#doc-search-view-toggle`              | Card/table toggle pill button                                                                                                |
+| `#doc-search-results-list`             | Card results `<ul>`                                                                                                          |
+| `#doc-search-table-body`               | Table results `<tbody>`                                                                                                      |
+| `#doc-search-pagination`               | Pagination `<nav>`                                                                                                           |
+| `#doc-search-sidebar`                  | Filter sidebar `<aside>` (hidden on mobile)                                                                                  |
+| `#doc-search-type-filters`             | Type facet checkbox list (sidebar)                                                                                           |
+| `#doc-search-category-filters`         | Category facet checkbox list (sidebar)                                                                                       |
+| `#doc-search-drawer`                   | Slide-in filter drawer (`role="dialog"`, `aria-modal="true"`); shown/hidden via `aria-hidden`                                |
+| `#doc-search-drawer-overlay`           | Semi-transparent backdrop behind the drawer; click closes the drawer                                                        |
+| `#doc-search-drawer-close`             | × close button in the drawer header                                                                                          |
+| `#doc-search-drawer-sort-group`        | Drawer copy of the sort radio group; inputs use `name="doc-search-drawer-sort"`                                              |
+| `#doc-search-drawer-type-filters`      | Drawer copy of the Type facet checkbox list                                                                                  |
+| `#doc-search-drawer-category-filters`  | Drawer copy of the Category facet checkbox list                                                                              |
+| `#doc-search-drawer-clear`             | "Clear all filters" button in drawer body — resets sort to Relevance, clears all checkboxes                                  |
+| `#doc-search-drawer-apply`             | "Apply filters" button in drawer footer — commits drawer sort + filter selections back to sidebar state                      |
 
 ---
 
@@ -386,8 +404,7 @@ When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for al
 | `.doc-search-results-col`             | Results column; `[data-view="table"]` activates table mode                                                                                                                                                                         |
 | `.doc-search-results-header`          | Bar above results — summary text + controls                                                                                                                                                                                        |
 | `.doc-search-results-summary`         | "Showing X–Y of N results" `<p>`                                                                                                                                                                                                   |
-| `.doc-search-results-controls`        | Flex row — sort select + view toggle                                                                                                                                                                                               |
-| `.doc-search-sort-select`             | Sort dropdown `<select>`                                                                                                                                                                                                           |
+| `.doc-search-results-controls`        | Flex row — view toggle button (sort has moved to the filter sidebar)                                                                                                                                                               |
 | `.doc-search-view-toggle`             | Card/table toggle pill `<button>`                                                                                                                                                                                                  |
 | `.doc-search-view-toggle__pill`       | The sliding oval indicator                                                                                                                                                                                                         |
 | `.doc-search-view-toggle__label`      | "Table view" / "Card view" text                                                                                                                                                                                                    |
@@ -400,7 +417,7 @@ When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for al
 | `.doc-search-result__ext-icon`        | Inline SVG external-link icon (shown for external URLs)                                                                                                                                                                            |
 | `.doc-search-result__description`     | Excerpt/description `<p>` — `margin: 12px 0 12px !important` overrides browser `<p>` default top margin                                                                                                                            |
 | `.doc-search-result__collection-row`  | "Collection: …" row                                                                                                                                                                                                                |
-| `.doc-search-result__collection-icon` | Inline SVG folder icon preceding "Collection:" — 12×12, `stroke="currentColor"`, `aria-hidden="true"`, vertically aligned to text baseline                                                                                        |
+| `.doc-search-result__collection-icon` | Inline SVG folder icon preceding "Collection:" — 12×12, `stroke="currentColor"`, `aria-hidden="true"`, vertically aligned to text baseline                                                                                         |
 | `.doc-search-result__collection-link` | Link to the parent collection                                                                                                                                                                                                      |
 | `.doc-search-result__meta`            | Flex row — doctype tag + last-updated date                                                                                                                                                                                         |
 | `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy") — `display: inline-flex`, `outline: 1px solid var(--clr-border-subtle)` (not `border`), **no `border-radius`**, 12px/700 uppercase Roboto                                               |
@@ -419,18 +436,38 @@ When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for al
 | `.doc-search-pagination__btn--prev`   | "‹ Prev" button                                                                                                                                                                                                                    |
 | `.doc-search-pagination__btn--next`   | "Next ›" button                                                                                                                                                                                                                    |
 | `.doc-search-pagination__ellipsis`    | `…` gap `<span>` between page numbers                                                                                                                                                                                              |
-| `.doc-search-sidebar`                 | Filter sidebar `<aside>`                                                                                                                                                                                                           |
-| `.doc-search-filter-group`            | A single facet group (Type or Category)                                                                                                                                                                                            |
-| `.doc-search-filter-group__title`     | Facet group heading `<h3>`                                                                                                                                                                                                         |
+| `.doc-search-sidebar`                 | Filter sidebar `<aside>` (hidden on mobile ≤ 900 px)                                                                                                                                                                               |
+| `.doc-search-filter-group`            | A single collapsible filter section (Sort by / Type / Category)                                                                                                                                                                    |
+| `.doc-search-filter-group__title`     | Non-collapsible facet group heading `<h3>` (Type, Category)                                                                                                                                                                        |
+| `.doc-search-filter-group__toggle`    | Collapsible `<button>` heading (Sort by); `aria-expanded` drives open/closed state; 16 px bold                                                                                                                                     |
+| `.doc-search-filter-group__chevron`   | Filled chevron SVG inside `.doc-search-filter-group__toggle`; rotates 180° when `aria-expanded="true"`                                                                                                                             |
+| `.doc-search-sort-group`              | `<div role="radiogroup">` containing sort radio buttons; `display: grid` for vertical stacking; hidden when toggle `aria-expanded="false"`                                                                                        |
+| `.doc-search-sort-option`             | `<label>` wrapping a sort radio `<input>` and its custom indicator                                                                                                                                                                 |
+| `.doc-search-sort-option__radio`      | Custom circular radio indicator — outline circle when unchecked, solid filled circle when checked                                                                                                                                  |
+| `.doc-search-sort-option__label`      | Sort option display text (Relevance, Last updated, A – Z, Z – A)                                                                                                                                                                  |
+| `.doc-search-mobile-filter-btn`       | Mobile-only "Filters" pill button (`display: none` on desktop); contains icon SVG, label, and chevron                                                                                                                             |
+| `.doc-search-mobile-filter-btn__left` | Left slot — wraps the filter-lines icon SVG and "Filters" text                                                                                                                                                                     |
+| `.doc-search-mobile-filter-btn__icon` | Filter-lines SVG (three horizontal lines) on the left of the button                                                                                                                                                                |
+| `.doc-search-mobile-filter-btn__label`| "Filters" text span                                                                                                                                                                                                                |
+| `.doc-search-mobile-filter-btn__chevron` | Stroke chevron SVG on the right of the mobile button                                                                                                                                                                            |
+| `.doc-search-drawer`                  | Slide-in filter panel (`position: fixed`; slides in from the right); `aria-hidden` drives visibility                                                                                                                               |
+| `.doc-search-drawer-overlay`          | Semi-transparent fixed overlay behind the drawer; click triggers close                                                                                                                                                             |
+| `.doc-search-drawer__header`          | Sticky header row — "Filters" title + × close button                                                                                                                                                                               |
+| `.doc-search-drawer__title`           | "Filters" heading `<span>`                                                                                                                                                                                                         |
+| `.doc-search-drawer__close`           | × close `<button>`; `align-self: stretch` fills the full header height; inset focus ring (`outline-offset: -4px`)                                                                                                                  |
+| `.doc-search-drawer__body`            | Scrollable region containing the sort group, Type facet, Category facet, and Clear button                                                                                                                                          |
+| `.doc-search-drawer__footer`          | Sticky footer containing the "Apply filters" button                                                                                                                                                                                |
+| `.doc-search-drawer__apply`           | "Apply filters" `<button>` — syncs drawer selections to sidebar and fires `applyFilters()`                                                                                                                                         |
+| `.doc-search-drawer__clear`           | "Clear all filters" `<button>` inside `.doc-search-drawer__body`; resets sort to Relevance and unchecks all facets                                                                                                                 |
 | `.doc-search-facet-list`              | Checkbox list `<ul>`                                                                                                                                                                                                               |
 | `.doc-search-facet-item`              | Checkbox label wrapper `<label>`                                                                                                                                                                                                   |
 | `.doc-search-facet-item__label`       | Facet value text                                                                                                                                                                                                                   |
 | `.doc-search-facet-item__count`       | Result count `(N)` in parentheses                                                                                                                                                                                                  |
-| `.doc-search-facet-hidden`            | Applied to facet items beyond `MAX_FACET_VISIBLE` (5)                                                                                                                                                                              |
+| `.doc-search-facet-hidden`            | Applied to facet items beyond `MAX_FACET_VISIBLE` (7)                                                                                                                                                                              |
 | `.doc-search-show-all`                | "Show all (N)" button — removes `.doc-search-facet-hidden`                                                                                                                                                                         |
 | `.search-template`                    | Hidden `<li>` template — cloned per result by JS                                                                                                                                                                                   |
 
-**Responsive breakpoint:** At ≤ 900px, `.doc-search-layout` switches from row to column and the sidebar moves below the results.
+**Responsive breakpoints:** At ≤ 900 px, `.doc-search-layout` switches from row to column, the filter sidebar (`#doc-search-sidebar`) is hidden, and a "Filters" pill button (`#doc-search-mobile-filter-btn`) appears in the results column. Tapping it slides in the filter drawer (`#doc-search-drawer`) from the right. The table view toggle is also hidden at this breakpoint — only card view is available on mobile.
 
 ---
 
@@ -465,13 +502,15 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 ## Known Quirks & Notes for Developers
 
-- **No Font Awesome in the bundle.** `dist/search-page.css` and `dist/search-page.js` have zero Font Awesome dependencies. All icons are inline SVGs (external-link icon in cards and table) or pure CSS (spinner ring via `@keyframes doc-search-spin`, sort chevron via unicode `▾`, pagination arrows via unicode `‹`/`›`). Font Awesome Pro is still loaded by the Matrix paint layout for the rest of the page — just not needed here.
+- **No Font Awesome in the bundle.** `dist/search-page.css` and `dist/search-page.js` have zero Font Awesome dependencies. All icons are inline SVGs (external-link icon in cards and table, sort group chevron, filter group toggle chevron, mobile filter button icons) or pure CSS (spinner ring via `@keyframes doc-search-spin`, pagination arrows via unicode `‹`/`›`). Font Awesome Pro is still loaded by the Matrix paint layout for the rest of the page — just not needed here.
 
 - **VPN required for production search.** The Coveo endpoint (`https://internal.nt.gov.au/...`) is only reachable on the NTG network. `coveo-search.js` automatically falls back to the mock JSON when `hostname` is `localhost` or `127.0.0.1`. Do not use a `?a=<assetId>` Matrix shorthand URL — it resolves to an HTML page, not JSON.
 
 - **Mock data is static.** `src/mock/coveo-search-rest-api-query.json` always returns the same 189 results regardless of the query string. It is a snapshot used purely to exercise the rendering pipeline locally.
 
-- **Sort is client-side; filters are preserved on sort change.** Changing the sort `<select>` calls `applySort()` then `applyFilters()` — no API call, no filter reset. `originalResults` always holds the unmodified API response so "Relevance" can restore it cheaply.
+- **Sort is client-side; filters are preserved on sort change.** Changing the sort radio buttons (`input[name="doc-search-sort"]` in the sidebar, or `input[name="doc-search-drawer-sort"]` in the mobile drawer) calls `applySort()` then `applyFilters()` — no API call, no filter reset. `originalResults` always holds the unmodified API response so "Relevance" can restore it cheaply. The mobile drawer has its own radio group that mirrors the sidebar state; the "Apply filters" button syncs the drawer selection back to the sidebar before firing.
+
+- **Mobile filter drawer.** On screens ≤ 900 px the filter sidebar is hidden and replaced by a "Filters" pill button. Tapping it opens a slide-in drawer (`#doc-search-drawer`, `position: fixed`, slides from the right) with the full sort + facet UI duplicated. The drawer has its own sort radio group (`name="doc-search-drawer-sort"`) and its own Type/Category checkbox lists. On "Apply filters" (`#doc-search-drawer-apply`), `coveo-search.js` reads the drawer sort selection, syncs it to the sidebar radios, reads the drawer checkboxes, syncs them to the sidebar checkboxes, then calls `applySort()` + `applyFilters()`. On "Clear all filters" (`#doc-search-drawer-clear`), sort resets to `relevancy` and all checkboxes are unchecked (in both drawer and sidebar). The overlay and close button both fire the same close routine.
 
 - **`runSearch()` fires unconditionally.** The `$(document).ready` handler calls `runSearch()` regardless of whether `#policy-search-form` exists on the page. The form submit handler is wired up separately, only if `#policy-search-form` is found — and it **redirects** to `?searchterm=<encoded_query>` rather than calling `runSearch()` directly. The redirect triggers a fresh page load which re-enters via the init path. This allows the results area to work as a standalone nested container without needing the form on the same page load, and keeps the URL bookmarkable.
 
