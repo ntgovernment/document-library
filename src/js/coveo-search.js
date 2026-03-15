@@ -324,12 +324,15 @@
       $container.append($item);
     });
 
-    // "Show all" toggle
+    // "Show all" / "Show less" toggle
     if (keys.length > MAX_FACET_VISIBLE) {
-      var remaining = keys.length - MAX_FACET_VISIBLE;
       var $showAll = $(
         '<li><button type="button" class="doc-search-show-all" data-facet-container="' +
           containerId +
+          '" data-total="' +
+          keys.length +
+          '" data-max="' +
+          MAX_FACET_VISIBLE +
           '">' +
           "Show all (" +
           keys.length +
@@ -913,14 +916,34 @@
     applyFilters();
   });
 
-  // ── Event: "Show all" facet toggle ───────────────────────────────────────────
+  // ── Event: "Show all" / "Show less" facet toggle ───────────────────────────
   $(document).on("click", ".doc-search-show-all", function () {
     var $btn = $(this);
-    var $list = $btn.closest("ul");
-    $list
-      .find(".doc-search-facet-hidden")
-      .removeClass("doc-search-facet-hidden");
-    $btn.closest("li").remove();
+    var $ul = $btn.closest("ul");
+    var isExpanded = $btn.data("expanded");
+    var max = $btn.data("max");
+    var total = $btn.data("total");
+
+    if (!isExpanded) {
+      // Expand — show all items
+      $ul
+        .find(".doc-search-facet-hidden")
+        .removeClass("doc-search-facet-hidden");
+      $btn.text("Show less");
+      $btn.data("expanded", true);
+    } else {
+      // Collapse — re-hide items beyond max
+      $ul
+        .find("li")
+        .not($btn.closest("li"))
+        .each(function (i) {
+          if (i >= max) {
+            $(this).addClass("doc-search-facet-hidden");
+          }
+        });
+      $btn.text("Show all (" + total + ")");
+      $btn.data("expanded", false);
+    }
   });
 
   // ── Event: Sort by expand/collapse ─────────────────────────────────────────
