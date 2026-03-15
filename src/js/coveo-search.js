@@ -467,12 +467,7 @@
             formatFileMeta(raw),
         );
 
-      // External link icon
-      var isExternal =
-        assetUrl !== "#" && assetUrl.indexOf("internal.nt.gov.au") === -1;
-      if (isExternal) {
-        $item.find('[data-ref="search-result-extlink"]').removeAttr("hidden");
-      }
+      // External link icon — hidden
 
       // Description
       $item
@@ -529,11 +524,7 @@
       var doctype = raw.resourcedoctype || "";
       var updated = formatDate(raw.resourceupdated);
 
-      var isExternal =
-        assetUrl !== "#" && assetUrl.indexOf("internal.nt.gov.au") === -1;
-      var extIcon = isExternal
-        ? ' <svg class="doc-search-result__ext-icon" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
-        : "";
+      var extIcon = "";
 
       var collectionCell = collectionName
         ? '<a class="doc-search-table__collection-link" href="' +
@@ -618,7 +609,7 @@
     // Previous
     var $prev = $(
       '<button type="button" class="doc-search-pagination__btn doc-search-pagination__btn--prev">' +
-        "\u2039 Prev</button>",
+        '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.8052 8.36231C4.6206 8.16354 4.6206 7.83654 4.8052 7.63777L10.522 1.48245C10.7066 1.28368 11.0104 1.28368 11.195 1.48245C11.3796 1.68121 11.3796 2.00822 11.195 2.20698L5.81458 8.00004L11.195 13.7931C11.3796 13.9919 11.3796 14.3189 11.195 14.5176C11.0104 14.7164 10.7066 14.7164 10.522 14.5176L4.8052 8.36231Z" fill="currentColor"/></svg>Prev</button>',
     );
     if (currentPage === 1) $prev.prop("disabled", true);
     $prev.on("click", function () {
@@ -655,7 +646,7 @@
     // Next
     var $next = $(
       '<button type="button" class="doc-search-pagination__btn doc-search-pagination__btn--next">' +
-        "Next \u203a</button>",
+        'Next<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.8052 8.36231C4.6206 8.16354 4.6206 7.83654 4.8052 7.63777L10.522 1.48245C10.7066 1.28368 11.0104 1.28368 11.195 1.48245C11.3796 1.68121 11.3796 2.00822 11.195 2.20698L5.81458 8.00004L11.195 13.7931C11.3796 13.9919 11.3796 14.3189 11.195 14.5176C11.0104 14.7164 10.7066 14.7164 10.522 14.5176L4.8052 8.36231Z" fill="currentColor"/></svg></button>',
     );
     if (currentPage === pages) $next.prop("disabled", true);
     $next.on("click", function () {
