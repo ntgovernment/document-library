@@ -366,6 +366,13 @@
   margin-bottom: 12px;
 }
 
+.doc-search-result__collection-icon {
+  vertical-align: middle;
+  margin-right: 4px;
+  position: relative;
+  top: -1px;
+}
+
 .doc-search-result__collection-row[hidden] {
   display: none;
 }

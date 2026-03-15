@@ -1,5 +1,29 @@
 import { defineConfig, build } from "vite";
-import { copyFileSync } from "fs";
+import { copyFileSync, readFileSync, writeFileSync } from "fs";
+
+/**
+ * Keeps the result card <li> template in search-section-preview.html in sync
+ * with the canonical copy in src/search-results.html.
+ * Extracts the block delimited by the '<!-- Result card template' comment and
+ * the closing </li>, re-indents it to match the preview file's 8-space indent,
+ * then replaces the equivalent block in search-section-preview.html.
+ */
+function syncPreviewTemplate() {
+  const src = readFileSync("src/search-results.html", "utf8");
+  const match = src.match(/(<!-- Result card template[\s\S]*?<\/li>)/);
+  if (!match) return;
+  // src uses no leading indent; preview uses 8-space indent
+  const indented = match[1]
+    .split("\n")
+    .map((line) => (line.length ? "        " + line : line))
+    .join("\n");
+  let preview = readFileSync("search-section-preview.html", "utf8");
+  preview = preview.replace(
+    /        <!-- Result card template[\s\S]*?<\/li>/,
+    indented,
+  );
+  writeFileSync("search-section-preview.html", preview, "utf8");
+}
 
 export default defineConfig({
   root: ".",
@@ -11,6 +35,7 @@ export default defineConfig({
       closeBundle() {
         copyFileSync("src/search-section.html", "dist/search-section.html");
         copyFileSync("src/search-results.html", "dist/search-results.html");
+        syncPreviewTemplate();
       },
     },
     {
@@ -20,15 +45,36 @@ export default defineConfig({
       configureServer(server) {
         let building = false;
 
-        server.watcher.add(["src/js/**/*.js", "src/css/**/*.css"]);
+        server.watcher.add(["src/js/**/*.js", "src/css/**/*.css", "src/*.html"]);
 
         server.watcher.on("change", async (file) => {
           const normalised = file.replace(/\\/g, "/");
-          if (
-            !normalised.includes("/src/js/") &&
-            !normalised.includes("/src/css/")
-          )
+          const isHtml =
+            normalised.includes("/src/") && normalised.endsWith(".html");
+          const isJsOrCss =
+            normalised.includes("/src/js/") ||
+            normalised.includes("/src/css/");
+
+          if (!isJsOrCss && !isHtml) return;
+
+          if (isHtml && !isJsOrCss) {
+            // Just recopy HTML files — no need to rebuild the JS bundle
+            try {
+              copyFileSync("src/search-section.html", "dist/search-section.html");
+              copyFileSync("src/search-results.html", "dist/search-results.html");
+              syncPreviewTemplate();
+              server.config.logger.info(
+                `[auto-rebuild] ${file} changed — HTML recopied, reloading browser`,
+              );
+              server.hot.send({ type: "full-reload" });
+            } catch (err) {
+              server.config.logger.error(
+                "[auto-rebuild] HTML copy failed: " + err.message,
+              );
+            }
             return;
+          }
+
           if (building) return;
 
           building = true;

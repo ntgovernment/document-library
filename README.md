@@ -73,9 +73,13 @@ Both HTML files are copied verbatim from `src/` to `dist/` by the `copy-search-s
 
 ### Vite plugins
 
-1. **`copy-search-section`** (`closeBundle` hook): after each build, copies `src/search-section.html` → `dist/search-section.html` and `src/search-results.html` → `dist/search-results.html` verbatim.
+1. **`copy-search-section`** (`closeBundle` hook): after each build, copies `src/search-section.html` → `dist/search-section.html` and `src/search-results.html` → `dist/search-results.html` verbatim, then calls `syncPreviewTemplate()` (see below).
 
-2. **`auto-rebuild-on-src-change`** (`configureServer` hook, dev server only): watches `src/js/**/*.js` and `src/css/**/*.css`. On any change, runs Vite's programmatic `build()` to regenerate `dist/search-page.js` and `dist/search-page.css`, then sends `server.hot.send({ type: "full-reload" })` to the browser. A `building` guard prevents concurrent builds. Logged to the dev terminal as `[auto-rebuild] <file> changed — rebuilding…` / `[auto-rebuild] done, reloading browser`.
+2. **`auto-rebuild-on-src-change`** (`configureServer` hook, dev server only): watches `src/js/**/*.js`, `src/css/**/*.css`, and `src/*.html`. Behaviour varies by file type:
+   - **JS or CSS change:** runs Vite's programmatic `build()` to regenerate `dist/search-page.js` and `dist/search-page.css`, then sends a full browser reload. A `building` guard prevents concurrent builds. Logged as `[auto-rebuild] <file> changed — rebuilding…`.
+   - **HTML change (`src/*.html`):** recopies `src/search-section.html` and `src/search-results.html` to `dist/`, calls `syncPreviewTemplate()`, then sends a full browser reload — no JS bundle rebuild needed. Logged as `[auto-rebuild] <file> changed — HTML recopied, reloading browser`.
+
+3. **`syncPreviewTemplate()`** (called by both of the above): reads the result card `<li>` template block (the `<!-- Result card template … </li>` section) from `src/search-results.html`, re-indents it to the 8-space indent used in `search-section-preview.html`, and replaces the matching block in-place. This keeps the dev preview's card template in sync with the canonical source automatically — you never need to manually edit `search-section-preview.html` for card template changes.
 
 ---
 
@@ -97,7 +101,7 @@ npm run preview # serve the dist/ build locally for final checks
 
 `npm run dev` opens `search-section-preview.html` automatically. This is a **full-fidelity preview page** generated from the production CMS snapshot (`Document search _ DCDD intranet.html`). It includes the real Matrix page chrome (header, nav, footer) and references `./dist/search-page.css` and `./dist/search-page.js` locally, so you can test the complete search interaction without VPN or CMS access.
 
-**Auto-rebuild is active** — edits to any file in `src/js/` or `src/css/` automatically rebuild `dist/` and trigger a full browser reload. Edits to `src/search-section.html` or `src/search-results.html` are picked up directly by the dev server without a rebuild (Vite serves them as static files), but run `npm run build` once after editing them to keep `dist/` in sync before committing.
+**Auto-rebuild is active** — edits to any file in `src/js/` or `src/css/` automatically rebuild `dist/` and trigger a full browser reload. Edits to `src/search-section.html` or `src/search-results.html` are automatically recopied to `dist/`, synced into `search-section-preview.html` via `syncPreviewTemplate()`, and trigger a full browser reload — no manual build step needed during dev. Run `npm run build` once before committing to ensure `dist/` reflects the final state.
 
 ### Mock data vs production API
 
@@ -268,9 +272,9 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                     |
 | `search-result-extlink`         | Shown (unhidden) when URL does not contain `internal.nt.gov.au`                                                                                   |
 | `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                     |
-| `search-result-collection-row`  | Hidden when `raw.resourcecollectionname` is empty                                                                                                 |
-| `search-result-collection`      | `raw.resourcecollectionname`                                                                                                                      |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`                                                                                                               |
+| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` or `raw.collectionurl` is empty — both must be present for the row to show                                                                                               |
+| `search-result-collection`      | `raw.collectionname` — human-readable display name of the collection                                                                                                                                                              |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text                                                                                                                                                        |
 | `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                |
 | `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break |
 
@@ -348,13 +352,13 @@ All colours, typography scales, and border radii are defined as CSS custom prope
 
 CSS custom property spacing tokens are **not** defined in `:root` — spacing values are written directly in class rules. The design system uses named step labels as a shorthand in design discussions:
 
-| Label   | Value  | Common uses in this widget                                   |
-| ------- | ------ | ------------------------------------------------------------ |
-| `sp-xs` | `8px`  | Tag horizontal padding, icon gaps                            |
+| Label   | Value  | Common uses in this widget                                                       |
+| ------- | ------ | -------------------------------------------------------------------------------- |
+| `sp-xs` | `8px`  | Tag horizontal padding, icon gaps                                                |
 | `sp-sm` | `12px` | Vertical gap between card elements (title → description → collection → meta row) |
-| `sp-md` | `16px` | Table cell padding                                           |
-| `sp-lg` | `24px` | Card vertical padding                                        |
-| `sp-xl` | `32px` | Card horizontal padding                                      |
+| `sp-md` | `16px` | Table cell padding                                                               |
+| `sp-lg` | `24px` | Card vertical padding                                                            |
+| `sp-xl` | `32px` | Card horizontal padding                                                          |
 
 When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for all bottom margins between elements — title link, description, collection row.
 
@@ -392,13 +396,14 @@ When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for al
 | `.doc-search-user-message`            | Error / empty-state message                                                                                                                                                                                                        |
 | `.doc-search-results-list`            | Card results `<ul>`                                                                                                                                                                                                                |
 | `.doc-search-result`                  | Single result card `<li>`                                                                                                                                                                                                          |
-| `.doc-search-result__title-link`      | Card title `<a>` — `display: flex` (block-level) so the following `<p>` sits flush below with no browser-default paragraph margin-top |
+| `.doc-search-result__title-link`      | Card title `<a>` — `display: flex` (block-level) so the following `<p>` sits flush below with no browser-default paragraph margin-top                                                                                              |
 | `.doc-search-result__ext-icon`        | Inline SVG external-link icon (shown for external URLs)                                                                                                                                                                            |
-| `.doc-search-result__description`     | Excerpt/description `<p>` — `margin: 12px 0 12px !important` overrides browser `<p>` default top margin                                                                                                                           |
+| `.doc-search-result__description`     | Excerpt/description `<p>` — `margin: 12px 0 12px !important` overrides browser `<p>` default top margin                                                                                                                            |
 | `.doc-search-result__collection-row`  | "Collection: …" row                                                                                                                                                                                                                |
+| `.doc-search-result__collection-icon` | Inline SVG folder icon preceding "Collection:" — 12×12, `stroke="currentColor"`, `aria-hidden="true"`, vertically aligned to text baseline                                                                                        |
 | `.doc-search-result__collection-link` | Link to the parent collection                                                                                                                                                                                                      |
 | `.doc-search-result__meta`            | Flex row — doctype tag + last-updated date                                                                                                                                                                                         |
-| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy") — `display: inline-flex`, `outline: 1px solid var(--clr-border-subtle)` (not `border`), **no `border-radius`**, 12px/700 uppercase Roboto |
+| `.doc-search-result__tag`             | Document type tag `<span>` (e.g. "Policy") — `display: inline-flex`, `outline: 1px solid var(--clr-border-subtle)` (not `border`), **no `border-radius`**, 12px/700 uppercase Roboto                                               |
 | `.doc-search-result__updated`         | Last-updated date wrapper `<div>` — contains literal text `Last updated:` and an inner `<span [data-ref="search-result-last-updated"]>` with the formatted date (card view only; table view renders plain text directly in `<td>`) |
 | `.doc-search-table-wrap`              | Overflow wrapper for table (hidden in card view)                                                                                                                                                                                   |
 | `.doc-search-table`                   | Results `<table>` (visible only when `data-view="table"`)                                                                                                                                                                          |
@@ -407,7 +412,7 @@ When changing internal card spacing, use `12px` (`sp-sm`) as the baseline for al
 | `.doc-search-table__col-type`         | Type column                                                                                                                                                                                                                        |
 | `.doc-search-table__col-collection`   | Collection column                                                                                                                                                                                                                  |
 | `.doc-search-table__title-link`       | Title `<a>` inside table row                                                                                                                                                                                                       |
-| `.doc-search-table__tag`              | Doctype `<span>` inside table row — same style as `.doc-search-result__tag` (`inline-flex`, `outline`, no `border-radius`) |
+| `.doc-search-table__tag`              | Doctype `<span>` inside table row — same style as `.doc-search-result__tag` (`inline-flex`, `outline`, no `border-radius`)                                                                                                         |
 | `.doc-search-pagination`              | Pagination `<nav>`                                                                                                                                                                                                                 |
 | `.doc-search-pagination__btn`         | Page number / prev / next `<button>`                                                                                                                                                                                               |
 | `.doc-search-pagination__btn--active` | Currently selected page button                                                                                                                                                                                                     |
@@ -484,4 +489,4 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **Tags use `outline`, not `border`, and have no `border-radius`.** Both `.doc-search-result__tag` and `.doc-search-table__tag` use `outline: 1px var(--clr-border-subtle) solid; outline-offset: -1px` and `overflow: hidden` to achieve the rectangular border appearance. This matches the Figma "Default" variant of the tag component. Do not add `border-radius` — the design is intentionally square-cornered.
 
-- **`search-section-preview.html` is generated from the production HTML snapshot.** To regenerate it after the production page changes significantly: write a Node script that reads `Document search _ DCDD intranet.html`, replaces the CDN widget refs with `./dist/` paths, wraps the `ntgc-search-section` div in `<form id="policy-search-form">`, and injects the contents of `src/search-results.html` after the form. See `build-preview.js` (deleted after use) in git history for reference.
+- **`search-section-preview.html` card template is auto-synced.** The `syncPreviewTemplate()` function in `vite.config.js` automatically extracts the result card `<li>` template from `src/search-results.html` and patches it into `search-section-preview.html` on every build and on every `src/*.html` save during dev. You **never need to manually edit `search-section-preview.html`** for card template changes — edit `src/search-results.html` and save. If you need to fully regenerate `search-section-preview.html` from scratch (e.g. after the production CMS page chrome changes significantly): write a Node script that reads `Document search _ DCDD intranet.html`, replaces the CDN widget refs with `./dist/` paths, wraps the `ntgc-search-section` div in `<form id="policy-search-form">`, and injects the contents of `src/search-results.html` after the form — then ensure the result card template block starts with `<!-- Result card template` so `syncPreviewTemplate()` can locate it. See `build-preview.js` (deleted after use) in git history for reference.
