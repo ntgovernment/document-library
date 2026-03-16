@@ -461,7 +461,7 @@
   line-height: 16px;
   letter-spacing: 1px;
   color: var(--clr-text-alt, #384560);
-  word-wrap: break-word;
+  white-space: nowrap;
 }
 
 /* Updated date in table */

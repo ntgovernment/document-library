@@ -33,10 +33,12 @@
  * result.raw.asseturl                 — primary document URL
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
- * result.raw.collectionname           — "Category" facet value (used as filter key)
- * result.raw.collectionname           — human-readable collection name; used as display text in both card and table views
+ * result.raw.category                 — "Category" facet filter key AND human-readable category name;
+ *                                        used as display text in card collection row and table collection cell.
+ *                                        This is the canonical field — the legacy collectionname field is ignored.
  * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
- * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
+ * result.raw.collectionurl            — collection page URL; used as href in card and table collection cell.
+ *                                        Values of "none" (literal string) are treated as absent.
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
  * result.raw.resourcetype             — file type key (e.g. "pdf_file", "word_doc"); mapped to uppercase label
  * result.raw.resourcefilesize         — human-readable file size (e.g. "354.2 KB")
@@ -65,9 +67,10 @@
  *                                                e.g. "My Document (PDF, 354.2 KB)"
  *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
  *   [data-ref="search-result-description"]     description / excerpt text
- *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
- *   [data-ref="search-result-collection"]      collection name text (raw.collectionname)
- *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl
+ *   [data-ref="search-result-collection-row"]  entire row hidden when raw.category is absent OR
+ *                                                raw.collectionurl is absent or "none"
+ *   [data-ref="search-result-collection"]      collection name text (raw.category)
+ *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl (only set when truthy and not "none")
  *   [data-ref="search-result-doctype"]         doctype badge text
  *   [data-ref="search-result-last-updated"]    formatted last-updated date
  *
@@ -77,8 +80,8 @@
  *   .doc-search-table__col-updated     last-updated plain text
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
  *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
- *                                        href = raw.collectionurl
- *                                        text = raw.collectionname
+ *                                        href = raw.collectionurl (empty cell when absent or "none")
+ *                                        text = raw.category
  *
  * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
  *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
@@ -265,7 +268,7 @@
     );
     buildFacet(
       results,
-      "collectionname",
+      "category",
       "#doc-search-category-filters",
       activeCategoryFilters,
     );
@@ -405,7 +408,7 @@
       }
       if (
         activeCategoryFilters.size > 0 &&
-        !activeCategoryFilters.has(raw.collectionname)
+        !activeCategoryFilters.has(raw.category)
       ) {
         return false;
       }
@@ -441,7 +444,7 @@
   /**
    * Renders a page slice as cloned .search-template <li> cards into
    * #doc-search-results-list. Collection row is shown only when both
-   * raw.collectionname AND raw.collectionurl are present.
+   * raw.category AND raw.collectionurl are present (collectionurl "none" = absent).
    * @param {Array} results  Slice of filteredResults for the current page.
    */
   function renderCardResults(results) {
@@ -475,8 +478,11 @@
         .text(raw.resourcedescription || result.excerpt || "");
 
       // Collection row
-      var collectionName = raw.collectionname || "";
-      var collectionUrl = raw.collectionurl || "";
+      var collectionName = raw.category || "";
+      var collectionUrl =
+        raw.collectionurl && raw.collectionurl !== "none"
+          ? raw.collectionurl
+          : "";
       if (collectionName && collectionUrl) {
         $item
           .find('[data-ref="search-result-collection"]')
@@ -507,7 +513,8 @@
   // ── Table results ─────────────────────────────────────────────────────────────
   /**
    * Renders a page slice as <tr> rows into #doc-search-table-body.
-   * Collection cell: href = raw.collectionurl; text = raw.collectionname.
+   * Collection cell: href = raw.collectionurl; text = raw.category.
+   * Empty cell when collectionurl is absent or the literal string "none".
    * @param {Array} results  Slice of filteredResults for the current page.
    */
   function renderTableResults(results) {
@@ -517,8 +524,11 @@
     results.forEach(function (result) {
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
-      var collectionName = raw.collectionname || "";
-      var collectionUrl = raw.collectionurl || "#";
+      var collectionName = raw.category || "";
+      var collectionUrl =
+        raw.collectionurl && raw.collectionurl !== "none"
+          ? raw.collectionurl
+          : "";
       var title =
         (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
       var doctype = raw.resourcedoctype || "";
@@ -526,13 +536,14 @@
 
       var extIcon = "";
 
-      var collectionCell = collectionName
-        ? '<a class="doc-search-table__collection-link" href="' +
-          escAttr(collectionUrl) +
-          '">' +
-          escHtml(collectionName) +
-          "</a>"
-        : "";
+      var collectionCell =
+        collectionName && collectionUrl
+          ? '<a class="doc-search-table__collection-link" href="' +
+            escAttr(collectionUrl) +
+            '">' +
+            escHtml(collectionName) +
+            "</a>"
+          : "";
 
       var $row = $(
         "<tr>" +
@@ -799,7 +810,7 @@
     );
     buildFacet(
       allResults,
-      "collectionname",
+      "category",
       "#doc-search-drawer-category-filters",
       activeCategoryFilters,
     );

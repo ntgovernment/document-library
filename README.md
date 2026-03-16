@@ -4,10 +4,10 @@
 
 This repository holds the **source assets and compiled bundles** for two DCDD intranet pages rendered by [Squiz Matrix](https://www.squiz.net/platform/matrix), deployed via **Git File Bridge**:
 
-| Page | URL | Role |
-| ---- | --- | ---- |
-| Document search | `https://internal.nt.gov.au/dcdd/dev/policy-library/document-search` | Filterable full-text Coveo search over all DCDD policy documents |
-| Collection pages | e.g. `https://internal.nt.gov.au/dcdd/dev/policy-library/agency-templates` | Per-collection document listing pages (Agency Templates, etc.) |
+| Page             | URL                                                                        | Role                                                             |
+| ---------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Document search  | `https://internal.nt.gov.au/dcdd/dev/policy-library/document-search`       | Filterable full-text Coveo search over all DCDD policy documents |
+| Collection pages | e.g. `https://internal.nt.gov.au/dcdd/dev/policy-library/agency-templates` | Per-collection document listing pages (Agency Templates, etc.)   |
 
 Both pages are part of the wider NTG (Northern Territory Government) intranet design system (`ntgc` prefix throughout). They share a common set of **CSS design tokens** defined in `src/css/tokens.css` and compiled into separate bundles by two independent Vite configs.
 
@@ -45,13 +45,13 @@ Both pages are part of the wider NTG (Northern Territory Government) intranet de
 
 **Files deployed to Matrix:**
 
-| Local path                     | Matrix asset              | Used by                                                           |
-| ------------------------------ | ------------------------- | ----------------------------------------------------------------- |
-| `dist/search-page.js`          | `search-page.js`          | Search page paint layout `<script>` (after jQuery)                |
-| `dist/search-page.css`         | `search-page.css`         | Search page paint layout `<link>`                                 |
-| `dist/collection-page.css`     | `collection-page.css`     | Collection page paint layout `<link>`                             |
-| `dist/search-section.html`     | `search-section.html`     | Squiz Matrix nested container — search form                       |
-| `dist/search-results.html`     | `search-results.html`     | Squiz Matrix nested container — results area, filters, pagination |
+| Local path                 | Matrix asset          | Used by                                                           |
+| -------------------------- | --------------------- | ----------------------------------------------------------------- |
+| `dist/search-page.js`      | `search-page.js`      | Search page paint layout `<script>` (after jQuery)                |
+| `dist/search-page.css`     | `search-page.css`     | Search page paint layout `<link>`                                 |
+| `dist/collection-page.css` | `collection-page.css` | Collection page paint layout `<link>`                             |
+| `dist/search-section.html` | `search-section.html` | Squiz Matrix nested container — search form                       |
+| `dist/search-results.html` | `search-results.html` | Squiz Matrix nested container — results area, filters, pagination |
 
 > **`dist/` must be rebuilt before committing HTML fragment changes.** The `auto-rebuild-on-src-change` Vite plugin only watches `src/js/` and `src/css/`. Changes to `src/search-section.html` or `src/search-results.html` require a manual `npm run build` to update `dist/`.
 >
@@ -64,6 +64,7 @@ The HTML page template and vendor/third-party scripts are managed separately ins
 ### Paint layout references
 
 **Search page:**
+
 ```html
 <!-- in the paint layout <head> -->
 <link rel="stylesheet" href="%asset_file_path:search-page-css-asset-id%" />
@@ -73,6 +74,7 @@ The HTML page template and vendor/third-party scripts are managed separately ins
 ```
 
 **Collection pages:**
+
 ```html
 <!-- in the paint layout <head> -->
 <link rel="stylesheet" href="%asset_file_path:collection-page-css-asset-id%" />
@@ -125,14 +127,14 @@ npm run preview # serve the dist/ build locally for final checks
 
 **Auto-rebuild is active** — the watcher routes changes to the appropriate build:
 
-| File changed | Rebuild action |
-| --- | --- |
-| `src/js/**/*.js` | Rebuilds search bundle (`vite.config.js`) |
-| `src/css/search-widget.css` (or any non-token, non-collection CSS) | Rebuilds search bundle |
-| `src/css/collection-page.css` | Rebuilds collection bundle only (`vite.collection.config.js`) |
-| `src/css/tokens.css` | Rebuilds **both** bundles sequentially |
-| `src/*.html` | Recopies HTML to `dist/`, syncs preview template, reloads browser (no JS rebuild) |
-| `collection-page-preview.html` | Full browser reload only (no rebuild) |
+| File changed                                                       | Rebuild action                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `src/js/**/*.js`                                                   | Rebuilds search bundle (`vite.config.js`)                                         |
+| `src/css/search-widget.css` (or any non-token, non-collection CSS) | Rebuilds search bundle                                                            |
+| `src/css/collection-page.css`                                      | Rebuilds collection bundle only (`vite.collection.config.js`)                     |
+| `src/css/tokens.css`                                               | Rebuilds **both** bundles sequentially                                            |
+| `src/*.html`                                                       | Recopies HTML to `dist/`, syncs preview template, reloads browser (no JS rebuild) |
+| `collection-page-preview.html`                                     | Full browser reload only (no rebuild)                                             |
 
 Run `npm run build` once before committing to ensure `dist/` reflects the final state.
 
@@ -140,10 +142,10 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 
 | Environment               | Data source                                                              |
 | ------------------------- | ------------------------------------------------------------------------ |
-| `localhost` / `127.0.0.1` | `src/mock/coveo-search-rest-api-query.json` (189 results, no VPN needed) |
+| `localhost` / `127.0.0.1` | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
 | All other hostnames       | Live Coveo REST API at `search-internal.nt.gov.au`                       |
 
-The mock JSON always returns the same 189 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
+The mock JSON always returns the same 43 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
 
 ### Standard change workflow
 
@@ -262,18 +264,18 @@ document-library/
 
 ### What to edit — quick reference
 
-| Goal | File(s) to edit | Then |
-| ---- | --------------- | ---- |
-| Change search input markup | `src/search-section.html` | `npm run build` → commit src+dist |
-| Change results/filters/pagination layout | `src/search-results.html` | `npm run build` → commit src+dist |
-| Change search logic, rendering, filters | `src/js/coveo-search.js` | `npm run build` → commit src+dist |
-| Change search widget styles | `src/css/search-widget.css` | `npm run build` → commit src+dist |
-| Change collection page styles | `src/css/collection-page.css` | `npm run build` → commit src+dist |
-| Change shared design tokens (colours, spacing, typography) | `src/css/tokens.css` | `npm run build` → commit src+dist |
-| Add a file to the search bundle | Add `import './...'` to `src/search-page.js` | `npm run build` → commit src+dist |
-| Add a file to the collection bundle | Add `import './...'` to `src/collection-page.js` | `npm run build` → commit src+dist |
-| Change mock data for local testing | `src/mock/coveo-search-rest-api-query.json` | No build needed (fetched at runtime) |
-| Upgrade a vendor library | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit |
+| Goal                                                       | File(s) to edit                                       | Then                                 |
+| ---------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
+| Change search input markup                                 | `src/search-section.html`                             | `npm run build` → commit src+dist    |
+| Change results/filters/pagination layout                   | `src/search-results.html`                             | `npm run build` → commit src+dist    |
+| Change search logic, rendering, filters                    | `src/js/coveo-search.js`                              | `npm run build` → commit src+dist    |
+| Change search widget styles                                | `src/css/search-widget.css`                           | `npm run build` → commit src+dist    |
+| Change collection page styles                              | `src/css/collection-page.css`                         | `npm run build` → commit src+dist    |
+| Change shared design tokens (colours, spacing, typography) | `src/css/tokens.css`                                  | `npm run build` → commit src+dist    |
+| Add a file to the search bundle                            | Add `import './...'` to `src/search-page.js`          | `npm run build` → commit src+dist    |
+| Add a file to the collection bundle                        | Add `import './...'` to `src/collection-page.js`      | `npm run build` → commit src+dist    |
+| Change mock data for local testing                         | `src/mock/coveo-search-rest-api-query.json`           | No build needed (fetched at runtime) |
+| Upgrade a vendor library                                   | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit             |
 
 ---
 
@@ -285,60 +287,60 @@ All CSS custom properties (design tokens) are declared in **[`src/css/tokens.css
 
 ### Colour tokens
 
-| Token | Value | Usage |
-| --- | --- | --- |
-| `--clr-primary` | `#343741` | NTG body text |
-| `--clr-text-default` | `#102040` | Widget body text, links (`--clr-link-default` is an alias) |
-| `--clr-link-default` | `#102040` | All link colours |
-| `--clr-link-hover` | `#208820` | Link hover state; collection page back-to-search arrow icon |
-| `--clr-text-alt` | `#384560` | Secondary text, input placeholder |
-| `--clr-text-emphasis` | `#208820` | Emphasis / positive text (green) |
-| `--clr-border-subtle` | `#d0e0e0` | Borders, outlines |
-| `--clr-bg-default` | `#ffffff` | Input background |
-| `--clr-bg-shade` | `#f5f5f7` | Card/item background (collection page) |
-| `--clr-bg-shade-alt` | `#ecf0f0` | Results area background (search widget) |
-| `--clr-icon-subtle` | `#878f9f` | Toggle pill (off state) |
-| `--clr-icon-default` | `#208820` | Prev/Next pagination icon hover |
-| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on) |
+| Token                    | Value     | Usage                                                       |
+| ------------------------ | --------- | ----------------------------------------------------------- |
+| `--clr-primary`          | `#343741` | NTG body text                                               |
+| `--clr-text-default`     | `#102040` | Widget body text, links (`--clr-link-default` is an alias)  |
+| `--clr-link-default`     | `#102040` | All link colours                                            |
+| `--clr-link-hover`       | `#208820` | Link hover state; collection page back-to-search arrow icon |
+| `--clr-text-alt`         | `#384560` | Secondary text, input placeholder                           |
+| `--clr-text-emphasis`    | `#208820` | Emphasis / positive text (green)                            |
+| `--clr-border-subtle`    | `#d0e0e0` | Borders, outlines                                           |
+| `--clr-bg-default`       | `#ffffff` | Input background                                            |
+| `--clr-bg-shade`         | `#f5f5f7` | Card/item background (collection page)                      |
+| `--clr-bg-shade-alt`     | `#ecf0f0` | Results area background (search widget)                     |
+| `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)                                     |
+| `--clr-icon-default`     | `#208820` | Prev/Next pagination icon hover                             |
+| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on)                        |
 
 ### Typography tokens
 
-| Token | Value |
-| --- | --- |
-| `--font-size-xs` | `0.875rem` (14 px) |
-| `--font-size-sm` | `1rem` (16 px) |
-| `--font-size-md` | `1.125rem` (18 px) |
-| `--font-size-lg` | `1.25rem` (20 px) |
-| `--font-size-xl` | `1.5rem` (24 px) |
-| `--font-size-2xl` | `1.875rem` (30 px) |
-| `--font-size-3xl` | `2.25rem` (36 px) |
-| `--font-weight-regular` | `400` |
-| `--font-weight-medium` | `500` |
-| `--font-weight-semibold` | `600` |
-| `--font-weight-bold` | `700` |
+| Token                    | Value              |
+| ------------------------ | ------------------ |
+| `--font-size-xs`         | `0.875rem` (14 px) |
+| `--font-size-sm`         | `1rem` (16 px)     |
+| `--font-size-md`         | `1.125rem` (18 px) |
+| `--font-size-lg`         | `1.25rem` (20 px)  |
+| `--font-size-xl`         | `1.5rem` (24 px)   |
+| `--font-size-2xl`        | `1.875rem` (30 px) |
+| `--font-size-3xl`        | `2.25rem` (36 px)  |
+| `--font-weight-regular`  | `400`              |
+| `--font-weight-medium`   | `500`              |
+| `--font-weight-semibold` | `600`              |
+| `--font-weight-bold`     | `700`              |
 
 ### Border / radius tokens
 
-| Token | Value |
-| --- | --- |
-| `--radius-sm` | `4px` |
-| `--radius-lg` | `1.75rem` |
+| Token           | Value      |
+| --------------- | ---------- |
+| `--radius-sm`   | `4px`      |
+| `--radius-lg`   | `1.75rem`  |
 | `--radius-pill` | `3.125rem` |
 
 ### Spacing tokens
 
 CSS spacing tokens are defined in `tokens.css`. Use these for margins, paddings, and gaps in **both** bundles.
 
-| Token | Value | Common use |
-| --- | --- | --- |
-| `--sp-xs` | `4px` | Tight gaps |
-| `--sp-sm` | `8px` | Icon gaps, tag horizontal padding |
-| `--sp-md` | `12px` | Card element vertical spacing |
-| `--sp-lg` | `16px` | Table cell padding |
-| `--sp-xl` | `24px` | Back-to-search margin-bottom; card vertical padding |
-| `--sp-2xl` | `32px` | Card horizontal padding |
-| `--sp-3xl` | `48px` | Section vertical padding (desktop) |
-| `--sp-4xl` | `72px` | Large section separations |
+| Token      | Value  | Common use                                          |
+| ---------- | ------ | --------------------------------------------------- |
+| `--sp-xs`  | `4px`  | Tight gaps                                          |
+| `--sp-sm`  | `8px`  | Icon gaps, tag horizontal padding                   |
+| `--sp-md`  | `12px` | Card element vertical spacing                       |
+| `--sp-lg`  | `16px` | Table cell padding                                  |
+| `--sp-xl`  | `24px` | Back-to-search margin-bottom; card vertical padding |
+| `--sp-2xl` | `32px` | Card horizontal padding                             |
+| `--sp-3xl` | `48px` | Section vertical padding (desktop)                  |
+| `--sp-4xl` | `72px` | Large section separations                           |
 
 ---
 
@@ -377,17 +379,20 @@ build: {
 The "Back to search results" link at the top of every collection page. It is an `<a>` element with Font Awesome Pro left-arrow icon.
 
 ```html
-<a href="/dcdd/dev/policy-library/document-search?searchterm=" class="back-to-search">
+<a
+  href="/dcdd/dev/policy-library/document-search?searchterm="
+  class="back-to-search"
+>
   <i class="fas fa-arrow-left"></i>
   Back to search results
 </a>
 ```
 
-| Class | Rule | Notes |
-| --- | --- | --- |
-| `.back-to-search` | `display: inline-flex; align-items: center; gap: 8px; padding: 12px 0; margin-bottom: var(--sp-xl) !important; font-weight: 700; font-size: 16px; color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins |
-| `.back-to-search + h2` | `margin-top: 0 !important` | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
-| `.back-to-search [class*='fa-arrow-left']` | `width: 20px; height: 20px; color: var(--clr-link-hover)` | Green (#208820) icon; uses attribute-substring selector to match Font Awesome `fas fa-arrow-left` and any variant |
+| Class                                      | Rule                                                                                                                                                                                                     | Notes                                                                                                                                                                                            |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.back-to-search`                          | `display: inline-flex; align-items: center; gap: 8px; padding: 12px 0; margin-bottom: var(--sp-xl) !important; font-weight: 700; font-size: 16px; color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins                                                                                                                        |
+| `.back-to-search + h2`                     | `margin-top: 0 !important`                                                                                                                                                                               | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
+| `.back-to-search [class*='fa-arrow-left']` | `width: 20px; height: 20px; color: var(--clr-link-hover)`                                                                                                                                                | Green (#208820) icon; uses attribute-substring selector to match Font Awesome `fas fa-arrow-left` and any variant                                                                                |
 
 > **`main.css` conflict pattern.** The NTG central stylesheet (`main.css`) is loaded by every Matrix page and applies aggressive base styles to `<h2>`, `<a>`, and other elements. When you need to override these in collection-page styles, use `!important`. This is the documented pattern for this codebase — not a hack.
 
@@ -413,14 +418,14 @@ A vertical stack of document cards. Each card links to an individual policy docu
 </section>
 ```
 
-| Class | Rule |
-| --- | --- |
-| `section.policy-documents` | `display: flex; flex-direction: column; gap: 10px; width: 100%` |
-| `.policy-document` | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch` |
-| `.policy-document a` | `display: inline-flex; align-self: stretch; text-decoration: none` |
-| `.policy-document__wrapper` | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px` |
-| `.policy-document__icon` | `display: flex; align-items: center; gap: 10px` |
-| `.policy-document__details` | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px` |
+| Class                          | Rule                                                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `section.policy-documents`     | `display: flex; flex-direction: column; gap: 10px; width: 100%`                                                               |
+| `.policy-document`             | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch`        |
+| `.policy-document a`           | `display: inline-flex; align-self: stretch; text-decoration: none`                                                            |
+| `.policy-document__wrapper`    | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px`                                                    |
+| `.policy-document__icon`       | `display: flex; align-items: center; gap: 10px`                                                                               |
+| `.policy-document__details`    | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px`                                                         |
 | `.policy-document__details h4` | `color: var(--clr-link-default); font-size: 16px; font-weight: 700; text-decoration: underline; line-height: 24px; margin: 0` |
 
 ### Preview page: `collection-page-preview.html`
@@ -428,7 +433,8 @@ A vertical stack of document cards. Each card links to an individual policy docu
 A local dev snapshot of an Agency Templates collection page with `./dist/collection-page.css` injected:
 
 ```html
-<link rel="stylesheet" href="./dist/collection-page.css">  <!-- added just before </head> -->
+<link rel="stylesheet" href="./dist/collection-page.css" />
+<!-- added just before </head> -->
 ```
 
 Access it at `http://localhost:3000/collection-page-preview.html` during `npm run dev`. Changes to `collection-page-preview.html` trigger a full browser reload; changes to `src/css/collection-page.css` trigger a collection bundle rebuild then reload.
@@ -494,9 +500,9 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                  |
 | `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute. |
 | `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                                                  |
-| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` or `raw.collectionurl` is empty — both must be present for the row to show                                           |
-| `search-result-collection`      | `raw.collectionname` — human-readable display name of the collection                                                                                                           |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text                                                                                                     |
+| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.category` is absent OR `raw.collectionurl` is absent or the literal string `"none"` — both must be valid for the row to show |
+| `search-result-collection`      | `raw.category` — human-readable category name displayed as the collection label                                                                                        |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.category` is the link text. Not applied when `collectionurl` is absent or `"none"`.                                          |
 | `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                             |
 | `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                              |
 
@@ -527,7 +533,7 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 - `#doc-search-sidebar` — filter sidebar containing Sort by (collapsible), Type, and Category facet groups; hidden on mobile
 - `#doc-search-sort-group` — `<div role="radiogroup">` for sidebar sort; inputs use `name="doc-search-sort"` (values: `relevancy`, `date descending`, `alpha ascending`, `alpha descending`)
 - `#doc-search-type-filters` — `<ul>` of checkbox filter items for `resourcedoctype`
-- `#doc-search-category-filters` — `<ul>` of checkbox filter items for `collectionname`
+- `#doc-search-category-filters` — `<ul>` of checkbox filter items for `category`
 - `#doc-search-drawer` — slide-in filter drawer (`role="dialog" aria-modal="true"`); shown/hidden via `aria-hidden`
 - `#doc-search-drawer-overlay` — semi-transparent backdrop; click closes the drawer
 - `#doc-search-drawer-close` — × close button in the drawer header
@@ -579,12 +585,12 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 
 Spacing values inside the widget are written as direct pixel values (not token variables) in the class rules:
 
-| Label | Value | Common uses in this widget |
-| ----- | ----- | -------------------------- |
+| Label   | Value  | Common uses in this widget                                                       |
+| ------- | ------ | -------------------------------------------------------------------------------- |
 | `sp-sm` | `12px` | Vertical gap between card elements (title → description → collection → meta row) |
-| `sp-md` | `16px` | Table cell padding |
-| `sp-lg` | `24px` | Card vertical padding |
-| `sp-xl` | `32px` | Card horizontal padding |
+| `sp-md` | `16px` | Table cell padding                                                               |
+| `sp-lg` | `24px` | Card vertical padding                                                            |
+| `sp-xl` | `32px` | Card horizontal padding                                                          |
 
 When changing internal card spacing, use `12px` as the baseline for all bottom margins between elements — title link, description, collection row.
 
@@ -637,7 +643,7 @@ When changing internal card spacing, use `12px` as the baseline for all bottom m
 | `.doc-search-table__col-type`                   | Type column                                                                                                                                                                                                                                                                                                 |
 | `.doc-search-table__col-collection`             | Collection column                                                                                                                                                                                                                                                                                           |
 | `.doc-search-table__title-link`                 | Title `<a>` inside table row                                                                                                                                                                                                                                                                                |
-| `.doc-search-table__tag`                        | Doctype `<span>` inside table row — same style as `.doc-search-result__tag` (`inline-flex`, `outline`, no `border-radius`)                                                                                                                                                                                  |
+| `.doc-search-table__tag`                        | Doctype `<span>` inside table row — same style as `.doc-search-result__tag` (`inline-flex`, `outline`, no `border-radius`); `white-space: nowrap` prevents multi-word types from line-breaking                                                                                                              |
 | `.doc-search-pagination`                        | Pagination `<nav>`                                                                                                                                                                                                                                                                                          |
 | `.doc-search-pagination__btn`                   | Page number / prev / next `<button>` — `border: none`, `border-radius: 0`, `background: transparent`. Number buttons show `--clr-bg-shade-alt` on hover.                                                                                                                                                    |
 | `.doc-search-pagination__btn--active`           | Currently selected page button — `background: var(--clr-surface-selected)` (dark green), white text, `pointer-events: none` (blocks hover and click). No border.                                                                                                                                            |
@@ -716,7 +722,7 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **VPN required for production search.** The Coveo endpoint (`https://internal.nt.gov.au/...`) is only reachable on the NTG network. `coveo-search.js` automatically falls back to the mock JSON when `hostname` is `localhost` or `127.0.0.1`. Do not use a `?a=<assetId>` Matrix shorthand URL — it resolves to an HTML page, not JSON.
 
-- **Mock data is static.** `src/mock/coveo-search-rest-api-query.json` always returns the same 189 results regardless of the query string. It is a snapshot used purely to exercise the rendering pipeline locally.
+- **Mock data is static.** `src/mock/coveo-search-rest-api-query.json` always returns the same 43 results regardless of the query string. It is a snapshot used purely to exercise the rendering pipeline locally.
 
 - **Sort is client-side; filters are preserved on sort change.** Changing the sort radio buttons (`input[name="doc-search-sort"]` in the sidebar, or `input[name="doc-search-drawer-sort"]` in the mobile drawer) calls `applySort()` then `applyFilters()` — no API call, no filter reset. `originalResults` always holds the unmodified API response so "Relevance" can restore it cheaply. The mobile drawer has its own radio group that mirrors the sidebar state; the "Apply filters" button syncs the drawer selection back to the sidebar before firing.
 
