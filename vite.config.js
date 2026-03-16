@@ -50,15 +50,16 @@ export default defineConfig({
           "src/css/**/*.css",
           "src/*.html",
           "collection-page-preview.html",
+          "Gifts and benefits _ Resources.html",
         ]);
 
         server.watcher.on("change", async (file) => {
           const normalised = file.replace(/\\/g, "/");
           const isSrcHtml =
             normalised.includes("/src/") && normalised.endsWith(".html");
-          const isPreviewHtml = normalised.endsWith(
-            "collection-page-preview.html",
-          );
+          const isPreviewHtml =
+            normalised.endsWith("collection-page-preview.html") ||
+            normalised.endsWith("Gifts and benefits _ Resources.html");
           const isHtml = isSrcHtml || isPreviewHtml;
           const isJsOrCss =
             normalised.includes("/src/js/") || normalised.includes("/src/css/");
@@ -134,7 +135,7 @@ export default defineConfig({
     },
   ],
   server: {
-    open: "/search-section-preview.html",
+    open: "/Gifts and benefits _ Resources.html",
     port: 3000,
     watch: {
       ignored: ["**/node_modules/**", "**/dist/**", "**/*_files/**"],

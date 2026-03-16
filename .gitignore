@@ -2,6 +2,8 @@
 Agency templates _ Resources.html
 Document search _ DCDD intranet.html
 Document search _ DCDD intranet_files/
+Gifts and benefits _ Resources.html
+Gifts and benefits _ Resources_files/
 
 # src/ is intentionally tracked — edit files there and deploy via Git File Bridge
 # src/js/        → NTG first-party scripts

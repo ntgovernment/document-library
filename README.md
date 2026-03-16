@@ -121,9 +121,11 @@ npm run dev     # Vite dev server at http://localhost:3000 with HMR
 npm run preview # serve the dist/ build locally for final checks
 ```
 
-`npm run dev` opens `search-section-preview.html` automatically. This is a **full-fidelity preview page** generated from the production CMS snapshot (`Document search _ DCDD intranet.html`). It includes the real Matrix page chrome (header, nav, footer) and references `./dist/search-page.css` and `./dist/search-page.js` locally, so you can test the complete search interaction without VPN or CMS access.
+`npm run dev` opens `Gifts and benefits _ Resources.html` automatically. This is a **full-fidelity collection page preview** generated from the production CMS snapshot. It references `./dist/collection-page.css` locally so you can test collection page layout and styles without VPN or CMS access.
 
-**Collection page preview** is also available at `http://localhost:3000/collection-page-preview.html`. This page is a copy of `Agency templates _ Resources.html` (the production CMS snapshot) with `./dist/collection-page.css` injected. Navigate there manually — it does not auto-open.
+**Search page preview** is at `http://localhost:3000/search-section-preview.html`. This page is generated from the `Document search _ DCDD intranet.html` snapshot with `./dist/search-page.css` and `./dist/search-page.js` injected. Navigate there manually — it does not auto-open by default.
+
+**Agency Templates collection preview** is at `http://localhost:3000/collection-page-preview.html`. Navigate there manually — it does not auto-open.
 
 **Auto-rebuild is active** — the watcher routes changes to the appropriate build:
 
@@ -135,6 +137,7 @@ npm run preview # serve the dist/ build locally for final checks
 | `src/css/tokens.css`                                               | Rebuilds **both** bundles sequentially                                            |
 | `src/*.html`                                                       | Recopies HTML to `dist/`, syncs preview template, reloads browser (no JS rebuild) |
 | `collection-page-preview.html`                                     | Full browser reload only (no rebuild)                                             |
+| `Gifts and benefits _ Resources.html`                              | Full browser reload only (no rebuild)                                             |
 
 Run `npm run build` once before committing to ensure `dist/` reflects the final state.
 
@@ -251,10 +254,12 @@ document-library/
 │   └── search-results.html                   # ★ → Matrix nested container (results)
 │
 ├── search-section-preview.html               # Search page full-fidelity dev preview (references ./dist/)
-├── collection-page-preview.html              # Collection page dev preview (references ./dist/collection-page.css)
+├── collection-page-preview.html              # Agency Templates collection page dev preview (references ./dist/collection-page.css)
 ├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate search preview (gitignored)
 ├── Agency templates _ Resources.html         # CMS page snapshot used to generate collection preview (gitignored)
 ├── Document search _ DCDD intranet_files/    # Snapshot companion assets (gitignored, reference only)
+├── Gifts and benefits _ Resources.html       # CMS collection page snapshot — default dev server open target (gitignored)
+├── Gifts and benefits _ Resources_files/     # Snapshot companion assets (gitignored, reference only)
 ├── vite.config.js                            # Vite: search bundle + dev server + copy-html + auto-rebuild watcher
 ├── vite.collection.config.js                 # Vite: collection bundle (emptyOutDir: false — NEVER change this)
 ├── package.json                              # npm scripts: dev / build / preview
@@ -331,16 +336,16 @@ All CSS custom properties (design tokens) are declared in **[`src/css/tokens.css
 
 CSS spacing tokens are defined in `tokens.css`. Use these for margins, paddings, and gaps in **both** bundles.
 
-| Token      | Value  | Common use                                          |
-| ---------- | ------ | --------------------------------------------------- |
-| `--sp-xs`  | `4px`  | Tight gaps                                          |
-| `--sp-sm`  | `8px`  | Icon gaps, tag horizontal padding                   |
-| `--sp-md`  | `12px` | Card element vertical spacing                       |
-| `--sp-lg`  | `16px` | Table cell padding                                  |
-| `--sp-xl`  | `24px` | Back-to-search margin-bottom; card vertical padding |
+| Token      | Value  | Common use                                                        |
+| ---------- | ------ | ----------------------------------------------------------------- |
+| `--sp-xs`  | `4px`  | Tight gaps                                                        |
+| `--sp-sm`  | `8px`  | Icon gaps, tag horizontal padding                                 |
+| `--sp-md`  | `12px` | Card element vertical spacing                                     |
+| `--sp-lg`  | `16px` | Table cell padding                                                |
+| `--sp-xl`  | `24px` | Back-to-search margin-bottom; card vertical padding               |
 | `--sp-2xl` | `32px` | Card horizontal padding; `.related-policies__title` margin-bottom |
-| `--sp-3xl` | `48px` | Section vertical padding (desktop)                  |
-| `--sp-4xl` | `72px` | Large section separations                           |
+| `--sp-3xl` | `48px` | Section vertical padding (desktop)                                |
+| `--sp-4xl` | `72px` | Large section separations                                         |
 
 ---
 
@@ -388,11 +393,11 @@ The "Back to search results" link at the top of every collection page. It is an 
 </a>
 ```
 
-| Class                                      | Rule                                                                                                                                                                                                     | Notes                                                                                                                                                                                            |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.back-to-search`       | `display: inline-flex; align-items: center; gap: 8px; margin-bottom: var(--sp-xl) !important; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins |
+| Class                   | Rule                                                                                                                                                                                                                         | Notes                                                                                                                                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.back-to-search`       | `display: inline-flex; align-items: center; gap: 8px; margin-bottom: var(--sp-xl) !important; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins                                                                                                                        |
 | `.back-to-search + h2`  | `margin-top: 0 !important`                                                                                                                                                                                                   | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
-| `.back-to-search:hover` | `text-decoration: underline`                                                                                                                                                                                                 | |
+| `.back-to-search:hover` | `text-decoration: underline`                                                                                                                                                                                                 |                                                                                                                                                                                                  |
 
 > **`main.css` conflict pattern.** The NTG central stylesheet (`main.css`) is loaded by every Matrix page and applies aggressive base styles to `<h2>`, `<a>`, and other elements. When you need to override these in collection-page styles, use `!important`. This is the documented pattern for this codebase — not a hack.
 
@@ -419,32 +424,63 @@ A vertical stack of document cards. Each card links to an individual policy docu
 </section>
 ```
 
-| Class                          | Rule                                                                                                                          | Notes |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `section.policy-documents`     | `display: flex; flex-direction: column; gap: 10px; width: 100%`                                                               | |
-| `.policy-document`             | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch`        |
-| `.policy-document a`           | `display: inline-flex; align-self: stretch; text-decoration: none`                                                            | |
-| `.policy-document__wrapper`    | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px`                                                    | |
-| `.policy-document__icon`       | `display: flex; align-items: center; gap: 10px`                                                                               | |
-| `.policy-document__details`    | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px`                                                         | |
+| Class                                                        | Rule                                                                                                                                       | Notes                                                                                                                                                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `section.policy-documents`                                   | `display: flex; flex-direction: column; gap: 10px; width: 100%`                                                                            |                                                                                                                                                                                                 |
+| `.policy-document`                                           | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch`                     |
+| `.policy-document a`                                         | `display: inline-flex; align-self: stretch; text-decoration: none`                                                                         |                                                                                                                                                                                                 |
+| `.policy-document__wrapper`                                  | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px`                                                                 |                                                                                                                                                                                                 |
+| `.policy-document__icon`                                     | `display: flex; align-items: center; gap: 10px`                                                                                            |                                                                                                                                                                                                 |
+| `.policy-document__details`                                  | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px`                                                                      |                                                                                                                                                                                                 |
 | `.policy-document__details h3, .policy-document__details h4` | `flex: 1 1 0; color: var(--clr-link-default); font-size: 16px; font-weight: 700; text-decoration: underline; line-height: 24px; margin: 0` | Both heading levels are styled identically. Use `h3` when the collection page title is an `h2`; use `h4` when a section subheading (`h3`) appears between the page title and the document list. |
 
-#### Contacts sidebar (`.contacts`)
+#### Sidebar panels (`.sidebar` / `.sidebar-panel`)
 
-The sidebar block showing the policy contact. Placed alongside the policy documents list in the right-hand column.
+Stacked bordered panels used in the right-hand sidebar column of collection pages. Matches the Figma bordered-panel design. Each panel has a title and a content block. Multiple panels stack vertically: the **first** panel uses a 3-sided border (left + top + right, open bottom) and subsequent panels use a full outline — this creates a seamless connected stack.
 
 ```html
-<div class="contacts">
-  <h5>Contact</h5>
-  <a href="mailto:governance.services@nt.gov.au">governance.services@nt.gov.au</a>
+<div class="col-12 col-md-3 offset-md-1">
+  <div class="sidebar">
+
+    <!-- First panel: 3-sided border (open bottom) -->
+    <div class="sidebar-panel">
+      <h5 class="sidebar-panel__title">Related web pages</h5>
+      <div class="sidebar-panel__content">
+        <div><a href="/path/to/page">Page name</a></div>
+      </div>
+    </div>
+
+    <!-- Subsequent panels: full outline -->
+    <div class="sidebar-panel">
+      <h5 class="sidebar-panel__title">Contact</h5>
+      <div class="sidebar-panel__content">
+        <div>Team name</div>
+        <div>Email: <a href="mailto:team@nt.gov.au">team@nt.gov.au</a></div>
+      </div>
+    </div>
+
+    <div class="sidebar-panel">
+      <h5 class="sidebar-panel__title">Last updated</h5>
+      <div class="sidebar-panel__content">
+        <div>16 March 2026</div>
+      </div>
+    </div>
+
+  </div>
 </div>
 ```
 
-| Class               | Rule |
-| ------------------- | ---- |
-| `.contacts h5`      | `font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--clr-text-default); margin: 0 0 12px` |
-| `.contacts a`       | `color: var(--clr-link-default); font-size: var(--font-size-sm); word-break: break-all` |
-| `.contacts a:hover` | `text-decoration: underline` |
+| Class                         | Rule                                                                                                                                                                                       | Notes                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `.sidebar`                    | `display: flex; flex-direction: column; width: 100%`                                                                                                                                       | Wrapper that stacks all `.sidebar-panel` children                                      |
+| `.sidebar-panel`              | `padding: 16px; outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; display: flex; flex-direction: column; gap: 12px`                                              | Default: full outline. Subsequent panels after the first.                              |
+| `.sidebar-panel:first-child`  | `outline: none; border-left: 1px solid var(--clr-border-subtle, #d0e0e0); border-top: 1px solid var(--clr-border-subtle, #d0e0e0); border-right: 1px solid var(--clr-border-subtle, #d0e0e0)` | First panel overrides outline with 3-sided border — no bottom edge, joins smoothly with the panel below |
+| `.sidebar-panel__title`       | `color: var(--clr-text-default, #102040); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); line-height: 24px; margin: 0`                                               | `<h5>` element; use `font-weight-bold` (700)                                           |
+| `.sidebar-panel__content`     | `display: flex; flex-direction: column; gap: 8px`                                                                                                                                          | Flex column with 8px gap between child items                                           |
+| `.sidebar-panel__content > *` | `color: var(--clr-link-default, #102040); font-size: var(--font-size-sm); line-height: 24px; word-wrap: break-word`                                                                        | Applies to all direct children (divs, spans, etc.)                                    |
+| `.sidebar-panel__content a`   | `text-decoration: underline; word-break: break-all`                                                                                                                                        | All links inside content are underlined                                                |
+
+> **Panel count:** Use as many panels as needed. The `:first-child` rule handles the open-bottom styling automatically — no extra classes needed.
 
 #### Related policies (`section.related-policies` / `.related-policy`)
 
@@ -459,7 +495,9 @@ A full-width shaded section below the main content listing related collection pa
         <div class="col-12 col-md-6 col-lg-4">
           <div class="related-policy">
             <h3 class="related-policy__title">Policy name</h3>
-            <p class="related-policy__description">Optional description text.</p>
+            <p class="related-policy__description">
+              Optional description text.
+            </p>
           </div>
         </div>
       </a>
@@ -468,13 +506,13 @@ A full-width shaded section below the main content listing related collection pa
 </section>
 ```
 
-| Class                          | Rule | Notes |
-| ------------------------------ | ---- | ----- |
-| `section.related-policies`     | `background: var(--clr-bg-shade-alt, #ecf0f0)` | Shaded section background |
-| `.related-policies__title`     | `font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--clr-text-default); margin: 0 0 var(--sp-2xl) !important` | `!important` overrides `main.css` heading top margin; bottom margin is 32px via `--sp-2xl` |
-| `.related-policy`              | `display: flex; flex-direction: column; align-items: flex-start; gap: 24px; padding: 48px; background: var(--clr-bg-primary, white); outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; margin-bottom: 24px` | Uses `outline` not `border` — avoids layout shift |
-| `.related-policy__title`       | `font-size: 32px; font-weight: 700; line-height: 36px; color: var(--clr-link-default, #102040); margin: 0; margin-top: 0 !important` | `!important` on `margin-top` overrides `main.css` heading margin |
-| `.related-policy__description` | `font-size: 16px; font-weight: 400; line-height: 24px; color: var(--clr-text-body, #384560); margin: 0` | Can be empty |
+| Class                          | Rule                                                                                                                                                                                                                                                                                                | Notes                                                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `section.related-policies`     | `background: var(--clr-bg-shade-alt, #ecf0f0)`                                                                                                                                                                                                                                                      | Shaded section background                                                                                         |
+| `.related-policies__title`     | `font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--clr-text-default); margin: 0 0 var(--sp-2xl) !important`                                                                                                                                                    | `!important` overrides `main.css` heading top margin; bottom margin is 32px via `--sp-2xl`                        |
+| `.related-policy`              | `display: flex; flex-direction: column; align-items: flex-start; gap: 24px; padding: 48px; background: var(--clr-bg-primary, white); outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; margin-bottom: 24px`                                                               | Uses `outline` not `border` — avoids layout shift                                                                 |
+| `.related-policy__title`       | `font-size: 32px; font-weight: 700; line-height: 36px; color: var(--clr-link-default, #102040); margin: 0; margin-top: 0 !important`                                                                                                                                                                | `!important` on `margin-top` overrides `main.css` heading margin                                                  |
+| `.related-policy__description` | `font-size: 16px; font-weight: 400; line-height: 24px; color: var(--clr-text-body, #384560); margin: 0`                                                                                                                                                                                             | Can be empty                                                                                                      |
 | `.related-policy__link`        | `display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--clr-surface-selected, #107810); color: var(--clr-text-inverse, #ffffff); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); text-decoration: none; border-radius: var(--radius-sm)` | **Not currently used in HTML** — the `<a>` card wrapper is the only link; this class exists in CSS for future use |
 
 ### Preview page: `collection-page-preview.html`
@@ -543,17 +581,17 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 
 **`data-ref` bindings** (attributes on elements inside `.search-template`, populated by `renderCardResults()`):
 
-| `data-ref` value                | Coveo API field                                                                                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                                                            |
-| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                  |
-| `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute. |
-| `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                                                  |
+| `data-ref` value                | Coveo API field                                                                                                                                                                               |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                                                                           |
+| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                                 |
+| `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute.                |
+| `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                                                                 |
 | `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` is absent/empty or the literal `"none"`, or when `raw.collectionurl` is absent — all three conditions must pass for the row to show |
-| `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                            |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                                |
-| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                             |
-| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                              |
+| `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                    |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                         |
+| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                                            |
+| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                                             |
 
 **`data-category` attribute:** Both card `<li>` elements (`renderCardResults()`) and table `<tr>` elements (`renderTableResults()`) carry a `data-category` attribute containing `raw.category` (empty string when absent). No visual display — this is a hidden data marker for DOM-level querying consistent with category filter values.
 
@@ -811,4 +849,4 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
   Do not remove them.
 
-- **Watcher routing in `vite.config.js`.** The `auto-rebuild-on-src-change` plugin detects which config to use based on the changed filename: `tokens.css` changes rebuild both configs sequentially; `collection-page.css` changes rebuild only `vite.collection.config.js`; all other CSS/JS changes rebuild only the search config (`vite.config.js`). The `isCollectionCss`, `isTokens`, `isSrcHtml`, and `isPreviewHtml` boolean flags in the `change` handler implement this. If you add new CSS files, update the watcher routing in `vite.config.js` accordingly.
+- **Watcher routing in `vite.config.js`.** The `auto-rebuild-on-src-change` plugin detects which config to use based on the changed filename: `tokens.css` changes rebuild both configs sequentially; `collection-page.css` changes rebuild only `vite.collection.config.js`; all other CSS/JS changes rebuild only the search config (`vite.config.js`). HTML files in `src/*.html` are recopied to `dist/` with a full reload; `collection-page-preview.html` and `Gifts and benefits _ Resources.html` trigger a full reload only (no rebuild). The `isCollectionCss`, `isTokens`, `isSrcHtml`, and `isPreviewHtml` boolean flags in the `change` handler implement this routing. If you add new CSS files or new dev preview HTML files, update the watcher paths and flag logic in `vite.config.js` accordingly.

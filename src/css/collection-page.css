@@ -100,22 +100,57 @@ section.policy-documents {
   word-wrap: break-word;
 }
 
-/* ── Contacts sidebar ────────────────────────────────────────────────────── */
-.contacts h5 {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--clr-text-default);
-  margin: 0 0 12px;
+/* ── Sidebar panels ─────────────────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
-.contacts a {
-  color: var(--clr-link-default);
+.sidebar-panel {
+  padding: 16px;
+  outline: 1px solid var(--clr-border-subtle, #d0e0e0);
+  outline-offset: -1px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-panel:first-child {
+  outline: none;
+  border-left: 1px solid var(--clr-border-subtle, #d0e0e0);
+  border-top: 1px solid var(--clr-border-subtle, #d0e0e0);
+  border-right: 1px solid var(--clr-border-subtle, #d0e0e0);
+}
+
+.sidebar-panel__title {
+  color: var(--clr-text-default, #102040);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 24px;
+  margin: 0;
+}
+
+.sidebar-panel__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-panel__content > * {
+  color: var(--clr-link-default, #102040);
+  font-size: var(--font-size-sm);
+  line-height: 24px;
+  word-wrap: break-word;
+}
+
+.sidebar-panel__content a {
+  text-decoration: underline;
   word-break: break-all;
 }
 
-.contacts a:hover {
-  text-decoration: underline;
+.sidebar-panel__content a:hover {
+  opacity: 0.8;
 }
 
 /* ── Related policies section ────────────────────────────────────────────── */
