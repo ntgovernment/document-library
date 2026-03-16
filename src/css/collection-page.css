@@ -87,6 +87,7 @@ section.policy-documents {
   gap: 4px;
 }
 
+.policy-document__details h3,
 .policy-document__details h4 {
   flex: 1 1 0;
   margin: 0;
@@ -126,29 +127,40 @@ section.related-policies {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   color: var(--clr-text-default);
-  margin: 0 0 24px;
+  margin: 0 0 var(--sp-2xl) !important;
 }
 
 .related-policy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 24px;
+  padding: 48px;
+  background: var(--clr-bg-primary, white);
+  outline: 1px solid var(--clr-border-subtle, #d0e0e0);
+  outline-offset: -1px;
   margin-bottom: 24px;
 }
 
 .related-policy__title {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--clr-text-default);
+  font-size: 32px;
+  font-family: Roboto, sans-serif;
+  font-weight: 700;
+  line-height: 36px;
+  color: var(--clr-link-default, #102040);
   margin: 0;
+  margin-top: 0 !important;
+  word-wrap: break-word;
 }
 
 .related-policy__description {
-  font-size: var(--font-size-sm);
-  color: var(--clr-text-alt);
+  font-size: 16px;
+  font-family: Roboto, sans-serif;
+  font-weight: 400;
+  color: var(--clr-text-body, #384560);
   margin: 0;
-  line-height: var(--line-height-base);
+  line-height: 24px;
+  word-wrap: break-word;
 }
 
 .related-policy__link {

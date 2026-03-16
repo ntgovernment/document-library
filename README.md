@@ -338,7 +338,7 @@ CSS spacing tokens are defined in `tokens.css`. Use these for margins, paddings,
 | `--sp-md`  | `12px` | Card element vertical spacing                       |
 | `--sp-lg`  | `16px` | Table cell padding                                  |
 | `--sp-xl`  | `24px` | Back-to-search margin-bottom; card vertical padding |
-| `--sp-2xl` | `32px` | Card horizontal padding                             |
+| `--sp-2xl` | `32px` | Card horizontal padding; `.related-policies__title` margin-bottom |
 | `--sp-3xl` | `48px` | Section vertical padding (desktop)                  |
 | `--sp-4xl` | `72px` | Large section separations                           |
 
@@ -390,9 +390,9 @@ The "Back to search results" link at the top of every collection page. It is an 
 
 | Class                                      | Rule                                                                                                                                                                                                     | Notes                                                                                                                                                                                            |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.back-to-search`                          | `display: inline-flex; align-items: center; gap: 8px; padding: 12px 0; margin-bottom: var(--sp-xl) !important; font-weight: 700; font-size: 16px; color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins                                                                                                                        |
-| `.back-to-search + h2`                     | `margin-top: 0 !important`                                                                                                                                                                               | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
-| `.back-to-search [class*='fa-arrow-left']` | `width: 20px; height: 20px; color: var(--clr-link-hover)`                                                                                                                                                | Green (#208820) icon; uses attribute-substring selector to match Font Awesome `fas fa-arrow-left` and any variant                                                                                |
+| `.back-to-search`       | `display: inline-flex; align-items: center; gap: 8px; margin-bottom: var(--sp-xl) !important; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--clr-link-default); text-decoration: none` | `!important` on `margin-bottom` overrides `main.css` link default margins |
+| `.back-to-search + h2`  | `margin-top: 0 !important`                                                                                                                                                                                                   | Neutralises the `margin-top` that `main.css` applies to all `<h2>` elements; without this the gap between the back link and the `<h2>` cannot be controlled via the link's `margin-bottom` alone |
+| `.back-to-search:hover` | `text-decoration: underline`                                                                                                                                                                                                 | |
 
 > **`main.css` conflict pattern.** The NTG central stylesheet (`main.css`) is loaded by every Matrix page and applies aggressive base styles to `<h2>`, `<a>`, and other elements. When you need to override these in collection-page styles, use `!important`. This is the documented pattern for this codebase — not a hack.
 
@@ -409,6 +409,7 @@ A vertical stack of document cards. Each card links to an individual policy docu
           <i class="fas fa-file-pdf"></i>
         </div>
         <div class="policy-document__details">
+          <!-- h4 or h3 depending on surrounding heading hierarchy -->
           <h4>Document title</h4>
           <span>Last updated: 5 March 2026</span>
         </div>
@@ -418,15 +419,63 @@ A vertical stack of document cards. Each card links to an individual policy docu
 </section>
 ```
 
-| Class                          | Rule                                                                                                                          |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `section.policy-documents`     | `display: flex; flex-direction: column; gap: 10px; width: 100%`                                                               |
+| Class                          | Rule                                                                                                                          | Notes |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `section.policy-documents`     | `display: flex; flex-direction: column; gap: 10px; width: 100%`                                                               | |
 | `.policy-document`             | `display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--clr-bg-shade); align-self: stretch`        |
-| `.policy-document a`           | `display: inline-flex; align-self: stretch; text-decoration: none`                                                            |
-| `.policy-document__wrapper`    | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px`                                                    |
-| `.policy-document__icon`       | `display: flex; align-items: center; gap: 10px`                                                                               |
-| `.policy-document__details`    | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px`                                                         |
-| `.policy-document__details h4` | `color: var(--clr-link-default); font-size: 16px; font-weight: 700; text-decoration: underline; line-height: 24px; margin: 0` |
+| `.policy-document a`           | `display: inline-flex; align-self: stretch; text-decoration: none`                                                            | |
+| `.policy-document__wrapper`    | `display: inline-flex; align-self: stretch; align-items: center; gap: 8px`                                                    | |
+| `.policy-document__icon`       | `display: flex; align-items: center; gap: 10px`                                                                               | |
+| `.policy-document__details`    | `flex: 1 1 0; display: inline-flex; flex-direction: column; gap: 4px`                                                         | |
+| `.policy-document__details h3, .policy-document__details h4` | `flex: 1 1 0; color: var(--clr-link-default); font-size: 16px; font-weight: 700; text-decoration: underline; line-height: 24px; margin: 0` | Both heading levels are styled identically. Use `h3` when the collection page title is an `h2`; use `h4` when a section subheading (`h3`) appears between the page title and the document list. |
+
+#### Contacts sidebar (`.contacts`)
+
+The sidebar block showing the policy contact. Placed alongside the policy documents list in the right-hand column.
+
+```html
+<div class="contacts">
+  <h5>Contact</h5>
+  <a href="mailto:governance.services@nt.gov.au">governance.services@nt.gov.au</a>
+</div>
+```
+
+| Class               | Rule |
+| ------------------- | ---- |
+| `.contacts h5`      | `font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--clr-text-default); margin: 0 0 12px` |
+| `.contacts a`       | `color: var(--clr-link-default); font-size: var(--font-size-sm); word-break: break-all` |
+| `.contacts a:hover` | `text-decoration: underline` |
+
+#### Related policies (`section.related-policies` / `.related-policy`)
+
+A full-width shaded section below the main content listing related collection pages. Each card is entirely wrapped in an `<a>` — the whole card is clickable. Do **not** add a `<span class="related-policy__link">View</span>` button inside the card; the link wraps the card at the outer level.
+
+```html
+<section class="related-policies">
+  <div class="container ntgc-pt-48 ntgc-pb-48">
+    <h2 class="related-policies__title">Related policies</h2>
+    <div class="row">
+      <a href="/path/to/collection">
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="related-policy">
+            <h3 class="related-policy__title">Policy name</h3>
+            <p class="related-policy__description">Optional description text.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+```
+
+| Class                          | Rule | Notes |
+| ------------------------------ | ---- | ----- |
+| `section.related-policies`     | `background: var(--clr-bg-shade-alt, #ecf0f0)` | Shaded section background |
+| `.related-policies__title`     | `font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--clr-text-default); margin: 0 0 var(--sp-2xl) !important` | `!important` overrides `main.css` heading top margin; bottom margin is 32px via `--sp-2xl` |
+| `.related-policy`              | `display: flex; flex-direction: column; align-items: flex-start; gap: 24px; padding: 48px; background: var(--clr-bg-primary, white); outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; margin-bottom: 24px` | Uses `outline` not `border` — avoids layout shift |
+| `.related-policy__title`       | `font-size: 32px; font-weight: 700; line-height: 36px; color: var(--clr-link-default, #102040); margin: 0; margin-top: 0 !important` | `!important` on `margin-top` overrides `main.css` heading margin |
+| `.related-policy__description` | `font-size: 16px; font-weight: 400; line-height: 24px; color: var(--clr-text-body, #384560); margin: 0` | Can be empty |
+| `.related-policy__link`        | `display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--clr-surface-selected, #107810); color: var(--clr-text-inverse, #ffffff); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); text-decoration: none; border-radius: var(--radius-sm)` | **Not currently used in HTML** — the `<a>` card wrapper is the only link; this class exists in CSS for future use |
 
 ### Preview page: `collection-page-preview.html`
 
@@ -754,6 +803,12 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 
 - **`emptyOutDir: false` in `vite.collection.config.js` is non-negotiable.** Vite clears `outDir` before each build by default. The collection config writes to `dist/` — the same directory as the search config. Without `emptyOutDir: false`, running the second build (or doing `npm run build`) would silently delete `dist/search-page.css` and `dist/search-page.js`, leaving Matrix without its search assets. The collection config has a comment marking this; do not remove or change it.
 
-- **`!important` overrides in `collection-page.css` are intentional.** `main.css` (the NTG central stylesheet, ~13 900 lines, loaded by the Matrix paint layout) applies aggressive base styles — `margin-top` on `<h2>`, default link colours, paragraph spacing. These cannot be overridden without `!important` from a stylesheet that is loaded at the same cascade level. Current intentional `!important` usages: `.back-to-search { margin-bottom: var(--sp-xl) !important }` and `.back-to-search + h2 { margin-top: 0 !important }`. Do not remove them.
+- **`!important` overrides in `collection-page.css` are intentional.** `main.css` (the NTG central stylesheet, ~13 900 lines, loaded by the Matrix paint layout) applies aggressive base styles — `margin-top` on `<h2>` and `<h3>`, default link colours, paragraph spacing. These cannot be overridden without `!important` from a stylesheet that is loaded at the same cascade level. Current intentional `!important` usages:
+  - `.back-to-search { margin-bottom: var(--sp-xl) !important }` — overrides `main.css` link default margins
+  - `.back-to-search + h2 { margin-top: 0 !important }` — prevents unwanted gap below the back link
+  - `.related-policies__title { margin: 0 0 var(--sp-2xl) !important }` — overrides `main.css` `<h2>` top margin
+  - `.related-policy__title { margin-top: 0 !important }` — overrides `main.css` `<h3>` top margin
+
+  Do not remove them.
 
 - **Watcher routing in `vite.config.js`.** The `auto-rebuild-on-src-change` plugin detects which config to use based on the changed filename: `tokens.css` changes rebuild both configs sequentially; `collection-page.css` changes rebuild only `vite.collection.config.js`; all other CSS/JS changes rebuild only the search config (`vite.config.js`). The `isCollectionCss`, `isTokens`, `isSrcHtml`, and `isPreviewHtml` boolean flags in the `change` handler implement this. If you add new CSS files, update the watcher routing in `vite.config.js` accordingly.
