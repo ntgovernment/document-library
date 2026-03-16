@@ -18,10 +18,11 @@
  * Dev detection: window.location.hostname is "localhost" or "127.0.0.1"
  *
  * Sorting is performed client-side after the full result set is received:
- *   applySort() is called after every fetch and after every sort <select> change.
- *   "relevancy"        — preserves the original API response order (originalResults)
- *   "date descending"  — sorts allResults by raw.resourceupdated descending
- *   "date ascending"   — sorts allResults by raw.resourceupdated ascending
+ *   applySort() is called after every fetch and after every sort radio button change.
+ *   "relevancy"         — preserves the original API response order (originalResults)
+ *   "date descending"   — sorts allResults by raw.resourceupdated descending
+ *   "alpha ascending"   — sorts allResults by raw.resourcefriendlytitle A–Z (localeCompare)
+ *   "alpha descending"  — sorts allResults by raw.resourcefriendlytitle Z–A (localeCompare)
  *   raw.resourceupdated format is "YYYY-MM-DD HH:mm:ss"; lexicographic comparison
  *   produces the correct chronological order for that format.
  *
@@ -33,12 +34,11 @@
  * result.raw.asseturl                 — primary document URL
  * result.raw.resourcedescription      — card/table description
  * result.raw.resourcedoctype          — "Type" facet value and tag label
- * result.raw.category                 — "Category" facet filter key AND human-readable category name;
- *                                        used as display text in card collection row and table collection cell.
- *                                        This is the canonical field — the legacy collectionname field is ignored.
+ * result.raw.category                 — "Category" facet value; used as filter key and stored as data-category
+ *                                       attribute on rendered card <li> and table <tr> elements
+ * result.raw.collectionname           — human-readable collection name; used as display text in card and table views
  * result.raw.collectionassetid        — Squiz asset ID for the collection (not used in rendering)
- * result.raw.collectionurl            — collection page URL; used as href in card and table collection cell.
- *                                        Values of "none" (literal string) are treated as absent.
+ * result.raw.collectionurl            — direct collection URL; used as href in both card and table view
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
  * result.raw.resourcetype             — file type key (e.g. "pdf_file", "word_doc"); mapped to uppercase label
  * result.raw.resourcefilesize         — human-readable file size (e.g. "354.2 KB")
@@ -54,7 +54,7 @@
  *   #doc-search-table-body        <tbody> populated with table rows
  *   #doc-search-results-summary   receives "Showing X–Y of Z results" text
  *   #doc-search-pagination        receives prev/page-number/next buttons
- *   #doc-search-sort-select       <select>; option values: "relevancy" | "date descending" | "date ascending"
+ *   input[name="doc-search-sort"] radio group; values: "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
  *   #doc-search-view-toggle       button; aria-pressed="true" = table view active
  *   #doc-search-type-filters      <ul> receives Type facet checkboxes
  *   #doc-search-category-filters  <ul> receives Category facet checkboxes
@@ -65,12 +65,11 @@
  *   [data-ref="search-result-link"]            <a> href = asseturl
  *   [data-ref="search-result-title"]           document title with formatFileMeta() suffix
  *                                                e.g. "My Document (PDF, 354.2 KB)"
- *   [data-ref="search-result-extlink"]         external-link icon (hidden unless external)
+ *   [data-ref="search-result-extlink"]         external-link icon — permanently hidden (display:none in CSS; JS does not remove hidden attr)
  *   [data-ref="search-result-description"]     description / excerpt text
- *   [data-ref="search-result-collection-row"]  entire row hidden when raw.category is absent OR
- *                                                raw.collectionurl is absent or "none"
- *   [data-ref="search-result-collection"]      collection name text (raw.category)
- *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl (only set when truthy and not "none")
+ *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
+ *   [data-ref="search-result-collection"]      collection name text (raw.collectionname)
+ *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl
  *   [data-ref="search-result-doctype"]         doctype badge text
  *   [data-ref="search-result-last-updated"]    formatted last-updated date
  *
@@ -80,8 +79,8 @@
  *   .doc-search-table__col-updated     last-updated plain text
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
  *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
- *                                        href = raw.collectionurl (empty cell when absent or "none")
- *                                        text = raw.category
+ *                                        href = raw.collectionurl
+ *                                        text = raw.collectionname
  *
  * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
  *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
@@ -93,8 +92,8 @@
  *
  * ── URL PARAMETERS READ ON INIT ──────────────────────────────────────────────
  *   ?searchterm=<string>  pre-fills #search and immediately runs a search
- *   ?sort=<string>        pre-selects sort; must match a <select> option value:
- *                           "relevancy" | "date descending" | "date ascending"
+ *   ?sort=<string>        pre-selects sort; must match a radio input value:
+ *                           "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
  *
  * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
  * On form submit: the handler redirects to
@@ -129,7 +128,7 @@
  *   currentPage      Number  — active pagination page (1-based)
  *   activeTypeFilters     Set  — checked "Type" facet values
  *   activeCategoryFilters Set  — checked "Category" facet values
- *   currentSort      String  — "relevancy" | "date descending" | "date ascending"
+ *   currentSort      String  — "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
  *   currentQuery     String  — last query passed to runSearch()
  *
  * ── DEPENDENCIES ─────────────────────────────────────────────────────────────
@@ -444,7 +443,7 @@
   /**
    * Renders a page slice as cloned .search-template <li> cards into
    * #doc-search-results-list. Collection row is shown only when both
-   * raw.category AND raw.collectionurl are present (collectionurl "none" = absent).
+   * raw.collectionname AND raw.collectionurl are present.
    * @param {Array} results  Slice of filteredResults for the current page.
    */
   function renderCardResults(results) {
@@ -477,13 +476,13 @@
         .find('[data-ref="search-result-description"]')
         .text(raw.resourcedescription || result.excerpt || "");
 
+      // Category (hidden data attribute for filter matching)
+      $item.attr("data-category", raw.category || "");
+
       // Collection row
-      var collectionName = raw.category || "";
-      var collectionUrl =
-        raw.collectionurl && raw.collectionurl !== "none"
-          ? raw.collectionurl
-          : "";
-      if (collectionName && collectionUrl) {
+      var collectionName = raw.collectionname || "";
+      var collectionUrl = raw.collectionurl || "";
+      if (collectionName && collectionName !== "none" && collectionUrl) {
         $item
           .find('[data-ref="search-result-collection"]')
           .text(collectionName);
@@ -513,8 +512,7 @@
   // ── Table results ─────────────────────────────────────────────────────────────
   /**
    * Renders a page slice as <tr> rows into #doc-search-table-body.
-   * Collection cell: href = raw.collectionurl; text = raw.category.
-   * Empty cell when collectionurl is absent or the literal string "none".
+   * Collection cell: href = raw.collectionurl; text = raw.collectionname.
    * @param {Array} results  Slice of filteredResults for the current page.
    */
   function renderTableResults(results) {
@@ -524,11 +522,8 @@
     results.forEach(function (result) {
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
-      var collectionName = raw.category || "";
-      var collectionUrl =
-        raw.collectionurl && raw.collectionurl !== "none"
-          ? raw.collectionurl
-          : "";
+      var collectionName = raw.collectionname || "";
+      var collectionUrl = raw.collectionurl || "#";
       var title =
         (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
       var doctype = raw.resourcedoctype || "";
@@ -537,7 +532,7 @@
       var extIcon = "";
 
       var collectionCell =
-        collectionName && collectionUrl
+        collectionName && collectionName !== "none"
           ? '<a class="doc-search-table__collection-link" href="' +
             escAttr(collectionUrl) +
             '">' +
@@ -570,6 +565,7 @@
           "</td>" +
           "</tr>",
       );
+      $row.attr("data-category", raw.category || "");
       $tbody.append($row);
     });
   }

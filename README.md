@@ -140,10 +140,10 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 
 ### Mock data vs production API
 
-| Environment               | Data source                                                              |
-| ------------------------- | ------------------------------------------------------------------------ |
+| Environment               | Data source                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
 | `localhost` / `127.0.0.1` | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
-| All other hostnames       | Live Coveo REST API at `search-internal.nt.gov.au`                       |
+| All other hostnames       | Live Coveo REST API at `search-internal.nt.gov.au`                      |
 
 The mock JSON always returns the same 43 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
 
@@ -500,11 +500,13 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                  |
 | `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute. |
 | `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                                                  |
-| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.category` is absent OR `raw.collectionurl` is absent or the literal string `"none"` — both must be valid for the row to show |
-| `search-result-collection`      | `raw.category` — human-readable category name displayed as the collection label                                                                                        |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.category` is the link text. Not applied when `collectionurl` is absent or `"none"`.                                          |
+| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` is absent/empty or the literal `"none"`, or when `raw.collectionurl` is absent — all three conditions must pass for the row to show |
+| `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                            |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                                |
 | `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                             |
 | `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                              |
+
+**`data-category` attribute:** Both card `<li>` elements (`renderCardResults()`) and table `<tr>` elements (`renderTableResults()`) carry a `data-category` attribute containing `raw.category` (empty string when absent). No visual display — this is a hidden data marker for DOM-level querying consistent with category filter values.
 
 **External link detection:** External link detection logic is still present in `coveo-search.js` but the external-link icon is **permanently hidden** — `.doc-search-result__ext-icon` has `display: none` in CSS, the JS no longer removes the `hidden` attribute in card view, and the table view sets `extIcon = ""` (empty string). To re-enable: remove `display: none` from `.doc-search-result__ext-icon` in `search-widget.css`, restore the `removeAttr("hidden")` call in card rendering, and restore the conditional SVG string in table rendering.
 
