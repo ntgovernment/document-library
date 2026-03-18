@@ -441,7 +441,6 @@ Stacked bordered panels used in the right-hand sidebar column of collection page
 ```html
 <div class="col-12 col-md-3 offset-md-1">
   <div class="sidebar">
-
     <!-- First panel: 3-sided border (open bottom) -->
     <div class="sidebar-panel">
       <h5 class="sidebar-panel__title">Related web pages</h5>
@@ -465,20 +464,19 @@ Stacked bordered panels used in the right-hand sidebar column of collection page
         <div>16 March 2026</div>
       </div>
     </div>
-
   </div>
 </div>
 ```
 
-| Class                         | Rule                                                                                                                                                                                       | Notes                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `.sidebar`                    | `display: flex; flex-direction: column; width: 100%`                                                                                                                                       | Wrapper that stacks all `.sidebar-panel` children                                      |
-| `.sidebar-panel`              | `padding: 16px; outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; display: flex; flex-direction: column; gap: 12px`                                              | Default: full outline. Subsequent panels after the first.                              |
+| Class                         | Rule                                                                                                                                                                                          | Notes                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `.sidebar`                    | `display: flex; flex-direction: column; width: 100%`                                                                                                                                          | Wrapper that stacks all `.sidebar-panel` children                                                       |
+| `.sidebar-panel`              | `padding: 16px; outline: 1px solid var(--clr-border-subtle, #d0e0e0); outline-offset: -1px; display: flex; flex-direction: column; gap: 12px`                                                 | Default: full outline. Subsequent panels after the first.                                               |
 | `.sidebar-panel:first-child`  | `outline: none; border-left: 1px solid var(--clr-border-subtle, #d0e0e0); border-top: 1px solid var(--clr-border-subtle, #d0e0e0); border-right: 1px solid var(--clr-border-subtle, #d0e0e0)` | First panel overrides outline with 3-sided border — no bottom edge, joins smoothly with the panel below |
-| `.sidebar-panel__title`       | `color: var(--clr-text-default, #102040); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); line-height: 24px; margin: 0`                                               | `<h5>` element; use `font-weight-bold` (700)                                           |
-| `.sidebar-panel__content`     | `display: flex; flex-direction: column; gap: 8px`                                                                                                                                          | Flex column with 8px gap between child items                                           |
-| `.sidebar-panel__content > *` | `color: var(--clr-link-default, #102040); font-size: var(--font-size-sm); line-height: 24px; word-wrap: break-word`                                                                        | Applies to all direct children (divs, spans, etc.)                                    |
-| `.sidebar-panel__content a`   | `text-decoration: underline; word-break: break-all`                                                                                                                                        | All links inside content are underlined                                                |
+| `.sidebar-panel__title`       | `color: var(--clr-text-default, #102040); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); line-height: 24px; margin: 0`                                                 | `<h5>` element; use `font-weight-bold` (700)                                                            |
+| `.sidebar-panel__content`     | `display: flex; flex-direction: column; gap: 8px`                                                                                                                                             | Flex column with 8px gap between child items                                                            |
+| `.sidebar-panel__content > *` | `color: var(--clr-link-default, #102040); font-size: var(--font-size-sm); line-height: 24px; word-wrap: break-word`                                                                           | Applies to all direct children (divs, spans, etc.)                                                      |
+| `.sidebar-panel__content a`   | `text-decoration: underline; word-break: break-all`                                                                                                                                           | All links inside content are underlined                                                                 |
 
 > **Panel count:** Use as many panels as needed. The `:first-child` rule handles the open-bottom styling automatically — no extra classes needed.
 

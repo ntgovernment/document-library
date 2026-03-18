@@ -6,6 +6,11 @@
  * request, then performs client-side filtering, sorting, and pagination.
  * Results are rendered by cloning a hidden .search-template element.
  *
+ * The Type and Category filter sidebars always show the complete list of values
+ * from the full document corpus (masterResults), regardless of the active search
+ * query. Only the count numbers beside each value change. Values with a count of
+ * zero are shown as disabled so users understand they exist but yield no results.
+ *
  * ── API ENDPOINT ─────────────────────────────────────────────────────────────
  * Production:  https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query
  *   Squiz Matrix page asset — same-origin (internal.nt.gov.au); returns the
@@ -95,13 +100,6 @@
  *   ?sort=<string>        pre-selects sort; must match a radio input value:
  *                           "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
  *
- * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
- * On form submit: the handler redirects to
- *   window.location.pathname + "?searchterm=" + encodeURIComponent(query)
- * This triggers a fresh page load, which then reads ?searchterm= above.
- * runSearch() is therefore always driven by the URL parameter, never called
- * directly from the submit handler.
- *
  * ── KEY CONSTANTS ────────────────────────────────────────────────────────────
  *   RESULTS_PER_PAGE_CARD   10      — cards shown per page
  *   RESULTS_PER_PAGE_TABLE  15      — rows shown per page in table view
@@ -122,14 +120,52 @@
  * To add a new file type mapping, add an entry to FILE_TYPE_LABELS.
  *
  * ── MODULE STATE ─────────────────────────────────────────────────────────────
- *   originalResults  Array   — raw API response order; restored on "relevancy" sort
- *   allResults       Array   — current display order (sorted copy of originalResults)
- *   filteredResults  Array   — subset of allResults after checkbox filters applied
- *   currentPage      Number  — active pagination page (1-based)
- *   activeTypeFilters     Set  — checked "Type" facet values
- *   activeCategoryFilters Set  — checked "Category" facet values
- *   currentSort      String  — "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
- *   currentQuery     String  — last query passed to runSearch()
+ *   masterResults         Array   — complete document corpus (all results for an empty query);
+ *                                   populated once on the first runSearch() call and never cleared.
+ *                                   Provides the stable value list for all facets so that Type and
+ *                                   Category options do not disappear when a search query narrows
+ *                                   the result set.
+ *   originalResults       Array   — raw API response order for the current query;
+ *                                   restored as allResults when sort = "relevancy"
+ *   allResults            Array   — current display order (sorted copy of originalResults)
+ *   filteredResults       Array   — subset of allResults after checkbox filters applied
+ *   currentPage           Number  — active pagination page (1-based)
+ *   activeTypeFilters     Set     — checked "Type" facet values (raw.resourcedoctype)
+ *   activeCategoryFilters Set     — checked "Category" facet values (raw.category)
+ *   currentSort           String  — "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
+ *   currentQuery          String  — last query string passed to runSearch()
+ *
+ * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
+ * On form submit: the handler redirects to
+ *   window.location.pathname + "?searchterm=" + encodeURIComponent(query)
+ * This triggers a fresh page load, which then reads ?searchterm= on init.
+ * runSearch() is therefore always driven by the URL parameter, never called
+ * directly from the submit handler.
+ *
+ * runSearch() fetch strategy:
+ *   • Dev (localhost/127.0.0.1): always fetches MOCK_URL; masterResults is seeded
+ *     from the mock response (which already contains all documents).
+ *   • Prod, empty query: fetches buildCoveoUrl("") which returns all documents;
+ *     masterResults is seeded from that same response.
+ *   • Prod, non-empty query, first call: fires TWO fetches in parallel via
+ *     Promise.all — one for the real query, one for buildCoveoUrl("") to seed
+ *     masterResults. The extra fetch only happens once per page load.
+ *   • Prod, non-empty query, subsequent calls: masterResults is already populated;
+ *     only the real query fetch is issued.
+ *
+ * ── FACET STRATEGY ───────────────────────────────────────────────────────────
+ * buildFacet(results, field, containerId, activeSet) uses TWO data sources:
+ *   • masterResults  → the canonical set of all possible values for `field`.
+ *                      Guarantees that every Type/Category is always rendered.
+ *   • results        → the current (query-filtered) result set; used only for
+ *                      computing per-value counts shown next to each label.
+ * Values present in masterResults but absent from results receive a count of 0
+ * and are rendered with the `disabled` attribute on their checkbox. They are
+ * still visible so users understand the full taxonomy, but cannot be selected
+ * (selecting a zero-count value would empty the results list).
+ * Items are sorted descending by count; alphabetical tiebreak. Items beyond
+ * MAX_FACET_VISIBLE receive the class doc-search-facet-hidden and a "Show all"
+ * toggle button is appended.
  *
  * ── DEPENDENCIES ─────────────────────────────────────────────────────────────
  *   jQuery (window.$)  — must be loaded before this script executes
@@ -154,6 +190,7 @@
   var originalResults = []; // API response order — restored when sort = relevancy
   var allResults = [];
   var filteredResults = [];
+  var masterResults = []; // full corpus — all documents regardless of query; used to keep facet lists stable
   var currentPage = 1;
   var activeTypeFilters = new Set();
   var activeCategoryFilters = new Set();
@@ -254,9 +291,20 @@
 
   // ── Filter building ──────────────────────────────────────────────────────────
   /**
-   * Rebuilds both the Type and Category facet lists from the given result set.
+   * Rebuilds both the Type and Category facet lists.
    * Delegates to buildFacet() for each facet field.
-   * @param {Array} results  Full (unfiltered) result set to count facet values from.
+   *
+   * `results` is used only to compute per-value counts — it should be allResults
+   * (the current sorted, pre-checkbox-filter set), not filteredResults.
+   * The visible value list always comes from masterResults inside buildFacet(),
+   * so passing an empty array is safe: all values will still be rendered with a
+   * count of 0 (useful for the "no results found" state).
+   *
+   * Call sites:
+   *   runSearch()       — after every API fetch
+   *   drawer apply btn  — after applying drawer filters, to sync the sidebar
+   *
+   * @param {Array} results  Current sorted result set (allResults) to count facet values from.
    */
   function buildFilters(results) {
     buildFacet(
@@ -274,14 +322,33 @@
   }
 
   /**
-   * Populates a facet <ul> with checkbox items sorted descending by occurrence count.
-   * @param {Array}  results      full result set to count facet values from
-   * @param {string} field        result.raw property name (e.g. "resourcedoctype")
-   * @param {string} containerId  jQuery selector for the target <ul>
-   * @param {Set}    activeSet    currently active filter values; matching checkboxes rendered checked
+   * Populates a facet <ul> with one checkbox item per known value for `field`.
+   *
+   * Value list  — derived from masterResults (the full corpus), so the same
+   *               set of Type / Category options is always rendered regardless
+   *               of how narrow the active search query is.
+   * Counts      — derived from `results` (typically allResults for the current
+   *               query), reflecting how many documents in the current result
+   *               set match each value.
+   * Sort order  — descending by count; alphabetical tiebreak. Values with a
+   *               count of 0 therefore always sink to the bottom.
+   * Disabled    — checkboxes for values with a count of 0 are rendered with the
+   *               `disabled` attribute. They remain visible but cannot be checked,
+   *               preventing the user from selecting a filter that would yield
+   *               zero results.
+   * Visibility  — only the first MAX_FACET_VISIBLE items are shown initially;
+   *               the rest receive the class doc-search-facet-hidden. A "Show all"
+   *               button is appended when the total exceeds MAX_FACET_VISIBLE.
+   *
+   * Used by buildFilters() (sidebar) and buildDrawerFilters() (mobile drawer).
+   *
+   * @param {Array}  results      Current result set used solely for counting (typically allResults).
+   * @param {string} field        result.raw property name (e.g. "resourcedoctype", "category").
+   * @param {string} containerId  jQuery selector for the target <ul> element.
+   * @param {Set}    activeSet    Currently active filter values; matching checkboxes are rendered checked.
    */
   function buildFacet(results, field, containerId, activeSet) {
-    // Count occurrences
+    // Count occurrences in the CURRENT result set (may be a filtered/searched subset)
     var counts = {};
     results.forEach(function (r) {
       var val = (r.raw || {})[field];
@@ -290,17 +357,29 @@
       }
     });
 
-    var keys = Object.keys(counts).sort(function (a, b) {
-      return counts[b] - counts[a]; // descending by count
+    // Derive the full key list from masterResults so every known value is always shown
+    var masterKeys = {};
+    masterResults.forEach(function (r) {
+      var val = (r.raw || {})[field];
+      if (val) masterKeys[val] = true;
+    });
+    var keys = Object.keys(masterKeys);
+
+    // Sort descending by count in current results; alphabetical tiebreak
+    keys.sort(function (a, b) {
+      var ca = counts[a] || 0;
+      var cb = counts[b] || 0;
+      return cb !== ca ? cb - ca : a.localeCompare(b);
     });
 
     var $container = $(containerId);
     $container.empty();
 
     keys.forEach(function (key, idx) {
+      var count = counts[key] || 0;
       var isHidden = idx >= MAX_FACET_VISIBLE;
-      var id = "facet-" + field + "-" + idx;
       var checked = activeSet.has(key) ? " checked" : "";
+      var disabled = count === 0 ? " disabled" : "";
       var hiddenAttr = isHidden ? ' class="doc-search-facet-hidden"' : "";
       var $item = $(
         "<li" +
@@ -313,12 +392,13 @@
           escAttr(key) +
           '"' +
           checked +
+          disabled +
           ">" +
           '<span class="doc-search-facet-item__label">' +
           escHtml(key) +
           "</span>" +
           '<span class="doc-search-facet-item__count">(' +
-          counts[key] +
+          count +
           ")</span>" +
           "</label>" +
           "</li>",
@@ -736,11 +816,29 @@
 
   // ── Core search ──────────────────────────────────────────────────────────────
   /**
-   * Fetches results from the Coveo API (or mock fixture in dev) for the given query,
-   * then chains: applySort() → buildFilters() → applyFilters() to render page 1.
-   * Existing filter/sort state is preserved across calls; clear activeTypeFilters and
-   * activeCategoryFilters before calling if a clean filter slate is needed.
-   * @param {string} query  Raw (unencoded) search term. Pass "" to return all documents.
+   * Executes a search for the given query and renders the results.
+   *
+   * Fetch strategy (see ── SEARCH FLOW in the file header for full details):
+   *   • Dev: always fetches MOCK_URL; masterResults seeded from the mock response.
+   *   • Prod, empty query: single fetch; masterResults seeded from the response.
+   *   • Prod, non-empty query, first call: two parallel fetches — one for the real
+   *     query, one for buildCoveoUrl("") to populate masterResults. Only fired once
+   *     per page load (when masterResults.length === 0).
+   *   • Prod, non-empty query, subsequent calls: single fetch for the real query;
+   *     masterResults is already populated.
+   *
+   * After fetching, the pipeline is:
+   *   applySort() → buildFilters(allResults) → applyFilters() → renderPage(1)
+   *
+   * When the query returns zero results, buildFilters(allResults) is still called
+   * (with an empty array) so the sidebar renders the full Type/Category list with
+   * counts of 0, rather than disappearing entirely.
+   *
+   * Existing sort and filter state (activeTypeFilters, activeCategoryFilters,
+   * currentSort) are preserved across calls. Clear those Sets before calling if
+   * a clean filter slate is needed.
+   *
+   * @param {string} query  Raw (unencoded) search term. Pass "" to fetch all documents.
    */
   function runSearch(query) {
     currentQuery = query;
@@ -758,16 +856,41 @@
     $summary.empty();
     setUserMessage("");
 
-    var url = isDev ? MOCK_URL : buildCoveoUrl(query);
+    var searchUrl = isDev ? MOCK_URL : buildCoveoUrl(query);
 
-    fetch(url)
-      .then(function (res) {
-        if (!res.ok) throw new Error("Search request failed: " + res.status);
-        return res.json();
-      })
-      .then(function (data) {
+    // In production, when a non-empty query is used and we don't yet have the full
+    // corpus cached, fetch all documents in parallel so the facet lists stay complete.
+    var masterFetchNeeded =
+      !isDev && query !== "" && masterResults.length === 0;
+    var masterFetch = masterFetchNeeded
+      ? fetch(buildCoveoUrl(""))
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (data) {
+            masterResults = data.results || [];
+          })
+          .catch(function () {
+            /* non-critical — facets will fall back gracefully */
+          })
+      : Promise.resolve();
+
+    var searchFetch = fetch(searchUrl).then(function (res) {
+      if (!res.ok) throw new Error("Search request failed: " + res.status);
+      return res.json();
+    });
+
+    Promise.all([searchFetch, masterFetch])
+      .then(function (values) {
+        var data = values[0];
         $spinner.addClass("d-none");
         originalResults = data.results || [];
+
+        // In dev or when query is empty the single fetch IS the full corpus
+        if (masterResults.length === 0) {
+          masterResults = originalResults.slice();
+        }
+
         applySort();
 
         if (allResults.length === 0) {
@@ -776,6 +899,7 @@
               ? 'No results found for "' + query + '".'
               : "No documents found.",
           );
+          buildFilters(allResults);
           return;
         }
 
