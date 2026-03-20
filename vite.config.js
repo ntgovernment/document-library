@@ -135,7 +135,7 @@ export default defineConfig({
     },
   ],
   server: {
-    open: "/Gifts and benefits _ Resources.html",
+    open: "/index.html",
     port: 3000,
     watch: {
       ignored: ["**/node_modules/**", "**/dist/**", "**/*_files/**"],

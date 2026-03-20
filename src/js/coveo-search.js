@@ -176,11 +176,26 @@
   "use strict";
 
   // ── Environment ──────────────────────────────────────────────────────────────
-  var isDev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  var isDev =
+    ["localhost", "127.0.0.1"].includes(window.location.hostname) ||
+    window.location.hostname.endsWith(".github.io");
 
   var COVEO_BASE_URL =
     "https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query";
-  var MOCK_URL = "/src/mock/coveo-search-rest-api-query.json";
+  var MOCK_URL = "./src/mock/coveo-search-rest-api-query.json";
+
+  /**
+   * When running on dev/GitHub Pages, rewrites an intranet collection URL
+   * (https://internal.nt.gov.au/.../collections/<slug>) to a local relative
+   * path (collection/<slug>.html). Returns the URL unchanged in production.
+   * @param {string} url
+   * @returns {string}
+   */
+  function localiseCollectionUrl(url) {
+    if (!isDev || !url || url === "none") return url;
+    var m = url.match(/\/collections\/([^/?#]+)/);
+    return m ? "collection/" + m[1] + ".html" : url;
+  }
 
   var RESULTS_PER_PAGE_CARD = 10;
   var RESULTS_PER_PAGE_TABLE = 15;
@@ -561,7 +576,7 @@
 
       // Collection row
       var collectionName = raw.collectionname || "";
-      var collectionUrl = raw.collectionurl || "";
+      var collectionUrl = localiseCollectionUrl(raw.collectionurl || "");
       if (collectionName && collectionName !== "none" && collectionUrl) {
         $item
           .find('[data-ref="search-result-collection"]')
@@ -603,7 +618,7 @@
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
       var collectionName = raw.collectionname || "";
-      var collectionUrl = raw.collectionurl || "#";
+      var collectionUrl = localiseCollectionUrl(raw.collectionurl) || "#";
       var title =
         (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
       var doctype = raw.resourcedoctype || "";

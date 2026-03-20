@@ -105,6 +105,77 @@ Both HTML files are copied verbatim from `src/` to `dist/` by the `copy-search-s
 
 ---
 
+## GitHub Pages (Public Preview)
+
+A static preview of the search and collection pages is automatically deployed to GitHub Pages on every push to `main`. This gives a publicly accessible version that runs entirely from mock data — no VPN or intranet access needed.
+
+**Live URL:** `https://ntgovernment.github.io/document-library/`
+
+| Page | URL |
+|------|-----|
+| Search | `https://ntgovernment.github.io/document-library/` |
+| Collection (example) | `https://ntgovernment.github.io/document-library/collection/gifts-and-benefits.html` |
+
+### How it works
+
+`npm run build` runs three steps:
+
+```bash
+vite build                                    # 1. Search bundle → dist/search-page.{js,css}
+vite build --config vite.collection.config.js # 2. Collection bundle → dist/collection-page.css
+node scripts/generate-collection-pages.js     # 3. Static HTML generation
+```
+
+Step 3 (`generate-collection-pages.js`) produces:
+- **`index.html`** at the repo root — the search page, derived from `search-section-preview.html` with all NTG CDN asset refs replaced by local relative paths and the `<title>` updated.
+- **`collection/<slug>.html`** — one page per collection (7 total), derived from `collection-page-preview.html` + the Coveo mock data. Each page gets the full document list, a back-to-search link, and a "Related policies" section linking to the other 6 collections.
+
+GitHub Actions (`.github/workflows/deploy.yml`) then:
+1. Runs `npm ci` and `npm run build`
+2. Assembles a `_site/` staging directory, copying `index.html`, `.nojekyll`, `collection/*.html`, `dist/`, and all referenced `src/vendor/`, `src/css/`, `src/js/`, and `src/mock/` assets
+3. Deploys `_site/` to the `gh-pages` branch via `actions/deploy-pages@v4`
+
+### `scripts/generate-collection-pages.js`
+
+This CommonJS Node.js script is the sole source of truth for both generated HTML outputs. Key points:
+
+- **`rewriteVendorPaths(html, prefix)`** — replaces every NTG intranet CDN URL (jQuery, auds.js, fotorama, components.js, etc.) with a local relative path. `prefix` is `"./"` for root pages (`index.html`) and `"../"` for `collection/*.html`.
+- **Back-to-search link** — each collection page renders `<a href="../index.html" onclick="if(history.length>1){history.back();return false;}">`. This uses browser history if available; otherwise navigates to `index.html`.
+- **Related policies** — the "Related policies" section on each collection page links to all sibling collection pages (all except the current one) using relative `slug.html` hrefs.
+- **Document grouping** — within each collection, results are grouped by `raw.resourcedoctype` (e.g. "Policy", "Procedure") and rendered as `<section class="policy-documents">` blocks.
+- **Google Analytics removal** — the script strips the `<script async src="https://www.googletagmanager.com/gtag/...">` block from `index.html` (GitHub Pages is a public preview, not a tracked environment).
+
+To regenerate the collection slugs or add new collections, update `src/mock/coveo-search-rest-api-query.json` and run `npm run build`.
+
+### `.nojekyll`
+
+An empty `.nojekyll` file at the repo root prevents GitHub Pages from running Jekyll preprocessing. Without it, GitHub Pages would ignore directories whose names start with `_` (like `dist/`) — and would also fail to serve paths containing dots (like `src/vendor/css/`). **Do not delete this file.**
+
+### Collection URL localisation
+
+On GitHub Pages, `localiseCollectionUrl()` in `coveo-search.js` automatically rewrites intranet collection URLs in search result cards to local relative paths:
+
+```
+https://internal.nt.gov.au/.../collections/gifts-and-benefits
+  → collection/gifts-and-benefits.html
+```
+
+This runs whenever `window.location.hostname` is `localhost`, `127.0.0.1`, or ends with `.github.io`. On the production intranet the collection URLs are left unchanged.
+
+### GitHub Pages vs production
+
+| Aspect | GitHub Pages | Production (Matrix) |
+|--------|-------------|---------------------|
+| Data source | Mock JSON (43 results, static) | Live Coveo REST API |
+| Hosting | GitHub Pages static files | Squiz Matrix CMS |
+| Authentication | None (public) | NTG intranet login |
+| Collection pages | Static HTML (generated from mock) | Dynamic Matrix pages |
+| Purpose | Development preview and demos | Live intranet service |
+
+> GitHub Pages is a **preview environment**, not a production mirror. It always serves the same 43 mock results regardless of query, and collection page data is baked in at build time.
+
+---
+
 ## Local Development
 
 ### Prerequisites
@@ -121,9 +192,9 @@ npm run dev     # Vite dev server at http://localhost:3000 with HMR
 npm run preview # serve the dist/ build locally for final checks
 ```
 
-`npm run dev` opens `Gifts and benefits _ Resources.html` automatically. This is a **full-fidelity collection page preview** generated from the production CMS snapshot. It references `./dist/collection-page.css` locally so you can test collection page layout and styles without VPN or CMS access.
+`npm run dev` opens `index.html` automatically — the static search page generated by `scripts/generate-collection-pages.js`. From there you can click through to any of the `collection/<slug>.html` collection pages.
 
-**Search page preview** is at `http://localhost:3000/search-section-preview.html`. This page is generated from the `Document search _ DCDD intranet.html` snapshot with `./dist/search-page.css` and `./dist/search-page.js` injected. Navigate there manually — it does not auto-open by default.
+**Search page (CMS chrome preview)** is at `http://localhost:3000/search-section-preview.html`. This page is generated from the `Document search _ DCDD intranet.html` snapshot with `./dist/search-page.css` and `./dist/search-page.js` injected. Navigate there manually.
 
 **Agency Templates collection preview** is at `http://localhost:3000/collection-page-preview.html`. Navigate there manually — it does not auto-open.
 
@@ -143,10 +214,11 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 
 ### Mock data vs production API
 
-| Environment               | Data source                                                             |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `localhost` / `127.0.0.1` | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
-| All other hostnames       | Live Coveo REST API at `search-internal.nt.gov.au`                      |
+| Environment                               | Data source                                                             |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `localhost` / `127.0.0.1`                 | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
+| `*.github.io` (GitHub Pages)              | `src/mock/coveo-search-rest-api-query.json` (same mock data, no VPN)   |
+| All other hostnames (production intranet) | Live Coveo REST API at `search-internal.nt.gov.au`                      |
 
 The mock JSON always returns the same 43 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
 
@@ -167,8 +239,9 @@ code src/css/tokens.css
 
 # 2. Preview changes interactively
 npm run dev
-# Search page:    http://localhost:3000/search-section-preview.html  (opens automatically)
-# Collection page: http://localhost:3000/collection-page-preview.html
+# Search page (static):         http://localhost:3000/index.html  (opens automatically)
+# Search page (CMS chrome):      http://localhost:3000/search-section-preview.html
+# Collection page (CMS chrome):  http://localhost:3000/collection-page-preview.html
 
 # 3. Build the deployable bundles
 npm run build
@@ -253,12 +326,29 @@ document-library/
 │   ├── search-section.html                   # ★ → Matrix nested container (form)
 │   └── search-results.html                   # ★ → Matrix nested container (results)
 │
-├── search-section-preview.html               # Search page full-fidelity dev preview (references ./dist/)
+├── scripts/
+│   └── generate-collection-pages.js         # ★ Generates index.html + collection/*.html for GitHub Pages (step 3 of npm run build)
+├── .github/
+│   └── workflows/
+│       └── deploy.yml                        # GitHub Actions: build + assemble + deploy to GitHub Pages on push to main
+│
+├── index.html                                # ★ Generated static search page (GitHub Pages entry point) — do not edit manually
+├── collection/                               # ★ Generated collection pages — do not edit manually (rebuilt by npm run build)
+│   ├── gifts-and-benefits.html
+│   ├── work-health-and-safety.html
+│   ├── prepare-to-welcome-new-employees.html
+│   ├── fraud-and-corruption.html
+│   ├── risk-management.html
+│   ├── employment-screening.html
+│   └── data-breaches.html
+├── .nojekyll                                 # Prevents GitHub Pages from running Jekyll (required so dist/, src/ etc. are served)
+│
+├── search-section-preview.html               # Search page CMS-chrome dev preview (references ./dist/)
 ├── collection-page-preview.html              # Agency Templates collection page dev preview (references ./dist/collection-page.css)
 ├── Document search _ DCDD intranet.html      # CMS page snapshot used to generate search preview (gitignored)
 ├── Agency templates _ Resources.html         # CMS page snapshot used to generate collection preview (gitignored)
 ├── Document search _ DCDD intranet_files/    # Snapshot companion assets (gitignored, reference only)
-├── Gifts and benefits _ Resources.html       # CMS collection page snapshot — default dev server open target (gitignored)
+├── Gifts and benefits _ Resources.html       # CMS collection page snapshot (gitignored)
 ├── Gifts and benefits _ Resources_files/     # Snapshot companion assets (gitignored, reference only)
 ├── vite.config.js                            # Vite: search bundle + dev server + copy-html + auto-rebuild watcher
 ├── vite.collection.config.js                 # Vite: collection bundle (emptyOutDir: false — NEVER change this)
@@ -280,6 +370,8 @@ document-library/
 | Add a file to the search bundle                            | Add `import './...'` to `src/search-page.js`          | `npm run build` → commit src+dist    |
 | Add a file to the collection bundle                        | Add `import './...'` to `src/collection-page.js`      | `npm run build` → commit src+dist    |
 | Change mock data for local testing                         | `src/mock/coveo-search-rest-api-query.json`           | No build needed (fetched at runtime) |
+| Update GitHub Pages static page generation                 | `scripts/generate-collection-pages.js`                | `npm run build` → commit             |
+| Update GitHub Actions deployment workflow                  | `.github/workflows/deploy.yml`                        | Commit; triggers on push to main     |
 | Upgrade a vendor library                                   | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit             |
 
 ---
@@ -848,3 +940,14 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
   Do not remove them.
 
 - **Watcher routing in `vite.config.js`.** The `auto-rebuild-on-src-change` plugin detects which config to use based on the changed filename: `tokens.css` changes rebuild both configs sequentially; `collection-page.css` changes rebuild only `vite.collection.config.js`; all other CSS/JS changes rebuild only the search config (`vite.config.js`). HTML files in `src/*.html` are recopied to `dist/` with a full reload; `collection-page-preview.html` and `Gifts and benefits _ Resources.html` trigger a full reload only (no rebuild). The `isCollectionCss`, `isTokens`, `isSrcHtml`, and `isPreviewHtml` boolean flags in the `change` handler implement this routing. If you add new CSS files or new dev preview HTML files, update the watcher paths and flag logic in `vite.config.js` accordingly.
+
+- **`index.html` and `collection/*.html` are generated files — do not edit them manually.** They are produced by `scripts/generate-collection-pages.js` as the third step of `npm run build`. Any manual edits will be overwritten on the next build. To change the structure, layout, or content of the GitHub Pages static pages, edit the generator script or its template sources (`search-section-preview.html`, `collection-page-preview.html`, `src/mock/coveo-search-rest-api-query.json`).
+
+- **`localiseCollectionUrl()` rewrites collection links on GitHub Pages.** On `localhost`, `127.0.0.1`, or any `*.github.io` hostname, the `localiseCollectionUrl()` function in `coveo-search.js` intercepts the `raw.collectionurl` field before it is set as a link `href`. It extracts the slug from the intranet URL (e.g. `gifts-and-benefits`) and returns `collection/gifts-and-benefits.html` instead. This is applied in `renderCardResults()` and `renderTableResults()`. On the production intranet the function is a no-op (returns the URL unchanged) because `isDev` is `false`.
+
+- **`.nojekyll` must remain in the repository root.** GitHub Pages will silently drop directories whose names begin with `_` (including `dist/`) if Jekyll processing is enabled. The `.nojekyll` file disables Jekyll. It is an empty file — its presence is all that matters. If GitHub Pages ever stops serving `dist/` or `src/`, check that `.nojekyll` is present and tracked in git.
+
+- **The `_site/` directory in the CI workflow is ephemeral.** `deploy.yml` assembles `_site/` in the GitHub Actions runner workspace during the deployment job and uploads it as a Pages artifact. It is never committed to the repository. The `gh-pages` branch is also managed entirely by the GitHub Actions deployment and should not be edited directly.
+
+- **`MOCK_URL` in `coveo-search.js` must be a relative path.** The value is `"./src/mock/coveo-search-rest-api-query.json"` — relative to the page, not to the js file. This works on both `localhost` (served by Vite from the repo root) and GitHub Pages (where the file is served from `_site/src/mock/...`). Do not change it to an absolute path or a root-relative path starting with `/`.
+

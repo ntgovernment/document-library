@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.collection.config.js",
+    "build": "vite build && vite build --config vite.collection.config.js && node scripts/generate-collection-pages.js",
     "preview": "vite preview"
   },
   "devDependencies": {
