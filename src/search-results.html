@@ -1,0 +1,236 @@
+<div class="doc-search-outer">
+    <div class="doc-search-layout">
+
+        <!-- Results column -->
+        <div class="doc-search-results-col" data-view="card" id="doc-search-results-col">
+
+            <!-- Loading spinner -->
+            <div class="doc-search-spinner d-none" role="status" id="initialLoadingSpinner">
+                <span class="doc-search-spinner__ring" aria-hidden="true"></span>
+                <span>Loading search results…</span>
+            </div>
+
+            <!-- User message -->
+            <div class="doc-search-user-message" id="doc-search-user-message"></div>
+
+            <!-- Mobile filter button (hidden on desktop) -->
+            <button type="button" class="doc-search-mobile-filter-btn" id="doc-search-mobile-filter-btn"
+                aria-label="Open filters" aria-expanded="false" aria-controls="doc-search-drawer">
+                <span class="doc-search-mobile-filter-btn__left">
+                    <svg class="doc-search-mobile-filter-btn__icon" aria-hidden="true" width="20" height="20"
+                        viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g clip-path="url(#clip0_2034_7551)">
+                            <path
+                                d="M3.75 0C4.09375 0 4.375 0.28125 4.375 0.625V3.1875C5.80078 3.47656 6.875 4.73828 6.875 6.25C6.875 7.76172 5.80078 9.02344 4.375 9.3125V19.375C4.375 19.7188 4.09375 20 3.75 20C3.40625 20 3.125 19.7188 3.125 19.375V9.3125C1.69922 9.02344 0.625 7.76172 0.625 6.25C0.625 4.73828 1.69922 3.47656 3.125 3.1875V0.625C3.125 0.28125 3.40625 0 3.75 0ZM3.75 8.125C4.24728 8.125 4.72419 7.92746 5.07583 7.57583C5.42746 7.22419 5.625 6.74728 5.625 6.25C5.625 5.75272 5.42746 5.27581 5.07583 4.92417C4.72419 4.57254 4.24728 4.375 3.75 4.375C3.25272 4.375 2.77581 4.57254 2.42417 4.92417C2.07254 5.27581 1.875 5.75272 1.875 6.25C1.875 6.74728 2.07254 7.22419 2.42417 7.57583C2.77581 7.92746 3.25272 8.125 3.75 8.125ZM10 15.625C10.2462 15.625 10.49 15.5765 10.7175 15.4823C10.945 15.388 11.1517 15.2499 11.3258 15.0758C11.4999 14.9017 11.638 14.695 11.7323 14.4675C11.8265 14.24 11.875 13.9962 11.875 13.75C11.875 13.5038 11.8265 13.26 11.7323 13.0325C11.638 12.805 11.4999 12.5983 11.3258 12.4242C11.1517 12.2501 10.945 12.112 10.7175 12.0177C10.49 11.9235 10.2462 11.875 10 11.875C9.75377 11.875 9.50995 11.9235 9.28247 12.0177C9.05498 12.112 8.84828 12.2501 8.67417 12.4242C8.50006 12.5983 8.36195 12.805 8.26773 13.0325C8.1735 13.26 8.125 13.5038 8.125 13.75C8.125 13.9962 8.1735 14.24 8.26773 14.4675C8.36195 14.695 8.50006 14.9017 8.67417 15.0758C8.84828 15.2499 9.05498 15.388 9.28247 15.4823C9.50995 15.5765 9.75377 15.625 10 15.625ZM13.125 13.75C13.125 15.2617 12.0508 16.5234 10.625 16.8125V19.375C10.625 19.7188 10.3438 20 10 20C9.65625 20 9.375 19.7188 9.375 19.375V16.8125C7.94922 16.5234 6.875 15.2617 6.875 13.75C6.875 12.2383 7.94922 10.9766 9.375 10.6875V0.625C9.375 0.28125 9.65625 0 10 0C10.3438 0 10.625 0.28125 10.625 0.625V10.6875C12.0508 10.9766 13.125 12.2383 13.125 13.75ZM18.125 7.5C18.125 7.00272 17.9275 6.52581 17.5758 6.17417C17.2242 5.82254 16.7473 5.625 16.25 5.625C15.7527 5.625 15.2758 5.82254 14.9242 6.17417C14.5725 6.52581 14.375 7.00272 14.375 7.5C14.375 7.99728 14.5725 8.47419 14.9242 8.82583C15.2758 9.17746 15.7527 9.375 16.25 9.375C16.7473 9.375 17.2242 9.17746 17.5758 8.82583C17.9275 8.47419 18.125 7.99728 18.125 7.5ZM16.875 10.5625V19.375C16.875 19.7188 16.5938 20 16.25 20C15.9062 20 15.625 19.7188 15.625 19.375V10.5625C14.1992 10.2734 13.125 9.01172 13.125 7.5C13.125 5.98828 14.1992 4.72656 15.625 4.4375V0.625C15.625 0.28125 15.9062 0 16.25 0C16.5938 0 16.875 0.28125 16.875 0.625V4.4375C18.3008 4.72656 19.375 5.98828 19.375 7.5C19.375 9.01172 18.3008 10.2734 16.875 10.5625Z"
+                                fill="currentColor" />
+                        </g>
+                        <defs>
+                            <clipPath id="clip0_2034_7551">
+                                <rect width="20" height="20" fill="white" />
+                            </clipPath>
+                        </defs>
+                    </svg>
+                    <span class="doc-search-mobile-filter-btn__label">Filters <span
+                            class="doc-search-mobile-filter-btn__count" id="doc-search-filter-count"></span></span>
+                </span>
+                <svg class="doc-search-mobile-filter-btn__chevron" aria-hidden="true" width="15" height="24"
+                    viewBox="0 0 15 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M14.1601 11.4566C14.4582 11.7547 14.4582 12.2452 14.1601 12.5434L4.9271 21.7763C4.62896 22.0744 4.13846 22.0744 3.84031 21.7763C3.54216 21.4782 3.54216 20.9877 3.84031 20.6895L12.5299 12L3.84031 3.31041C3.54216 3.01226 3.54216 2.52176 3.84031 2.22361C4.13846 1.92546 4.62896 1.92546 4.9271 2.22361L14.1601 11.4566Z"
+                        fill="currentColor" />
+                </svg>
+            </button>
+
+            <!-- Results header -->
+            <div class="doc-search-results-header">
+                <p class="doc-search-results-summary" id="doc-search-results-summary"></p>
+                <div class="doc-search-results-controls">
+                    <button type="button" class="doc-search-view-toggle" id="doc-search-view-toggle"
+                        aria-pressed="false" aria-label="Toggle table view">
+                        <span class="doc-search-view-toggle__pill"></span>
+                        <span class="doc-search-view-toggle__label">Table view</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card results list -->
+            <ul class="doc-search-results-list" id="doc-search-results-list" role="list"></ul>
+
+            <!-- Table results -->
+            <div class="doc-search-table-wrap">
+                <table class="doc-search-table" id="doc-search-table">
+                    <thead>
+                        <tr>
+                            <th class="doc-search-table__col-title">Title</th>
+                            <th class="doc-search-table__col-updated">Last Updated</th>
+                            <th class="doc-search-table__col-type">Type</th>
+                            <th class="doc-search-table__col-collection">Collection</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doc-search-table-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav class="doc-search-pagination" id="doc-search-pagination" aria-label="Search results pages"></nav>
+
+        </div><!-- /.doc-search-results-col -->
+
+        <!-- Filter sidebar -->
+        <aside class="doc-search-sidebar" id="doc-search-sidebar" aria-label="Filter results">
+            <div class="doc-search-filter-group">
+                <button type="button" class="doc-search-filter-group__toggle" aria-expanded="false"
+                    aria-controls="doc-search-sort-group">
+                    <span>Sort by</span>
+                    <svg class="doc-search-filter-group__chevron" aria-hidden="true" width="16" height="16"
+                        viewBox="61.5 9.3 13 7" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M67.5967 15.353C67.8181 15.5468 68.1824 15.5468 68.4038 15.353L74.1181 10.353C74.3395 10.1593 74.3395 9.84053 74.1181 9.64678C73.8967 9.45303 73.5324 9.45303 73.311 9.64678L68.0002 14.2937L62.6895 9.64678C62.4681 9.45303 62.1038 9.45303 61.8824 9.64678C61.661 9.84053 61.661 10.1593 61.8824 10.353L67.5967 15.353Z" />
+                    </svg>
+                </button>
+                <div class="doc-search-sort-group" role="radiogroup" aria-label="Sort results by"
+                    id="doc-search-sort-group">
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="relevancy" checked>
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Relevance</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="date descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Last updated</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="alpha ascending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">A – Z</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-sort" value="alpha descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Z – A</span>
+                    </label>
+                </div>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Type</h3>
+                <ul class="doc-search-facet-list" id="doc-search-type-filters" role="group"
+                    aria-label="Filter by document type"></ul>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Category</h3>
+                <ul class="doc-search-facet-list" id="doc-search-category-filters" role="group"
+                    aria-label="Filter by category"></ul>
+            </div>
+        </aside>
+
+    </div><!-- /.doc-search-layout -->
+
+    <!-- Mobile filter drawer overlay -->
+    <div class="doc-search-drawer-overlay" id="doc-search-drawer-overlay" aria-hidden="true"></div>
+
+    <!-- Mobile filter drawer -->
+    <div class="doc-search-drawer" id="doc-search-drawer" role="dialog" aria-modal="true" aria-label="Filters"
+        aria-hidden="true">
+
+        <!-- Drawer header -->
+        <div class="doc-search-drawer__header">
+            <span class="doc-search-drawer__title">Filters</span>
+            <button type="button" class="doc-search-drawer__close" id="doc-search-drawer-close"
+                aria-label="Close filters">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Drawer body (scrollable) -->
+        <div class="doc-search-drawer__body">
+            <div class="doc-search-filter-group">
+                <button type="button" class="doc-search-filter-group__toggle" aria-expanded="false"
+                    aria-controls="doc-search-drawer-sort-group">
+                    <span>Sort by</span>
+                    <svg class="doc-search-filter-group__chevron" aria-hidden="true" width="16" height="16"
+                        viewBox="61.5 9.3 13 7" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M67.5967 15.353C67.8181 15.5468 68.1824 15.5468 68.4038 15.353L74.1181 10.353C74.3395 10.1593 74.3395 9.84053 74.1181 9.64678C73.8967 9.45303 73.5324 9.45303 73.311 9.64678L68.0002 14.2937L62.6895 9.64678C62.4681 9.45303 62.1038 9.45303 61.8824 9.64678C61.661 9.84053 61.661 10.1593 61.8824 10.353L67.5967 15.353Z" />
+                    </svg>
+                </button>
+                <div class="doc-search-sort-group" role="radiogroup" aria-label="Sort results by"
+                    id="doc-search-drawer-sort-group">
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="relevancy" checked>
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Relevance</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="date descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Last updated</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="alpha ascending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">A – Z</span>
+                    </label>
+                    <label class="doc-search-sort-option">
+                        <input type="radio" name="doc-search-drawer-sort" value="alpha descending">
+                        <span class="doc-search-sort-option__radio" aria-hidden="true"></span>
+                        <span class="doc-search-sort-option__label">Z – A</span>
+                    </label>
+                </div>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Type</h3>
+                <ul class="doc-search-facet-list" id="doc-search-drawer-type-filters" role="group"
+                    aria-label="Filter by document type"></ul>
+            </div>
+            <div class="doc-search-filter-group">
+                <h3 class="doc-search-filter-group__title">Category</h3>
+                <ul class="doc-search-facet-list" id="doc-search-drawer-category-filters" role="group"
+                    aria-label="Filter by category"></ul>
+            </div>
+            <button type="button" class="doc-search-drawer__clear" id="doc-search-drawer-clear">
+                Clear all filters
+            </button>
+        </div>
+
+        <!-- Drawer footer -->
+        <div class="doc-search-drawer__footer">
+            <button type="button" class="doc-search-drawer__apply" id="doc-search-drawer-apply">
+                Apply filters
+            </button>
+        </div>
+
+    </div><!-- /.doc-search-drawer -->
+
+</div><!-- /.doc-search-outer -->
+
+<!-- Result card template (hidden — cloned per result by coveo-search.js) -->
+<li class="doc-search-result search-template" hidden>
+    <a class="doc-search-result__title-link" href="#" data-ref="search-result-link">
+        <span data-ref="search-result-title"></span>
+        <svg class="doc-search-result__ext-icon" data-ref="search-result-extlink" hidden aria-hidden="true" width="12"
+            height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
+    </a>
+    <p class="doc-search-result__description" data-ref="search-result-description"></p>
+    <div class="doc-search-result__collection-row" data-ref="search-result-collection-row">
+        <svg class="doc-search-result__collection-icon" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+        Collection: <a class="doc-search-result__collection-link" href="#"
+            data-ref="search-result-collection-link"><span data-ref="search-result-collection"></span></a>
+    </div>
+    <div class="doc-search-result__meta">
+        <span class="doc-search-result__tag" data-ref="search-result-doctype"></span>
+        <div class="doc-search-result__updated">Last updated: <span data-ref="search-result-last-updated"></span></div>
+    </div>
+</li>
