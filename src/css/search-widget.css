@@ -119,6 +119,45 @@
   min-width: 0;
 }
 
+/* ── Per-item filter animations ───────────────────────────────────────────── */
+@keyframes doc-search-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes doc-search-item-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.doc-search-result--entering,
+tr.doc-search-row--entering {
+  animation: doc-search-item-enter 0.25s ease both;
+}
+
+.doc-search-result--leaving,
+tr.doc-search-row--leaving {
+  animation: doc-search-item-leave 0.2s ease both;
+  pointer-events: none;
+}
+
+.doc-search-result--moving,
+tr.doc-search-row--moving {
+  transition: transform 0.25s ease;
+}
+
 /* ── Results header bar ───────────────────────────────────────────────────── */
 .doc-search-results-header {
   display: flex;
@@ -288,9 +327,9 @@
 
 .doc-search-result__collection-icon {
   vertical-align: middle;
-  margin-right: 4px;
+  margin-right: 2px;
   position: relative;
-  top: -1px;
+  top: -3px;
 }
 
 .doc-search-result__collection-row[hidden] {
