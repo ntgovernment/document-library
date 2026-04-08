@@ -37,7 +37,7 @@
  * result.excerpt                      — fallback description
  * result.raw.resourcefriendlytitle    — display title
  * result.raw.asseturl                 — primary document URL
- * result.raw.resourcedescription      — card/table description
+ * result.raw.description              — card description (falls back to result.excerpt)
  * result.raw.resourcedoctype          — "Type" facet value and tag label
  * result.raw.category                 — "Category" facet value; used as filter key and stored as data-category
  *                                       attribute on rendered card <li> and table <tr> elements
@@ -211,6 +211,8 @@
   var activeCategoryFilters = new Set();
   var currentSort = "relevancy";
   var currentQuery = "";
+  var filterAnimTimeout = null;
+  var visibleResultIds = new Set();
 
   // ── URL builder ──────────────────────────────────────────────────────────────
   /**
@@ -482,13 +484,84 @@
 
   // ── Apply filters ────────────────────────────────────────────────────────────
   /**
-   * Filters allResults into filteredResults using the active facet Sets, then
-   * renders page 1. Facets are ANDed across types; values within a facet are ORed.
+   * Filters allResults into filteredResults using the active facet Sets.
+   * Facets are ANDed across types; values within a facet are ORed.
    * An empty Set means no filter is applied for that facet (all values pass).
+   *
+   * Orchestrates per-item animations via a three-way diff (leaving / entering /
+   * staying) of the current and next page-1 slices:
+   *   • Leaving items  – fade-out + upward drift (--leaving class)
+   *   • Entering items  – fade-in + downward drift (--entering class)
+   *   • Staying items   – FLIP slide to their new position (--moving class)
+   *
+   * A clearTimeout guard prevents stacked animations on rapid filter toggles.
    */
   function updateMobileFilterCount() {
     var total = activeTypeFilters.size + activeCategoryFilters.size;
     $("#doc-search-filter-count").text(total > 0 ? "(" + total + ")" : "");
+  }
+
+  /**
+   * Returns a stable identifier for a result object, used to track item
+   * identity across filter-triggered DOM rebuilds.
+   */
+  function resultId(result) {
+    return result.uniqueId || result.clickUri || "";
+  }
+
+  /**
+   * FLIP helper: captures the current top-offset of each staying item
+   * before the DOM is rebuilt, keyed by result ID.
+   */
+  function snapshotPositions($container, stayingIds) {
+    var positions = {};
+    stayingIds.forEach(function (id) {
+      var el = $container.find('[data-result-id="' + id + '"]')[0];
+      if (el) positions[id] = el.getBoundingClientRect().top;
+    });
+    return positions;
+  }
+
+  /**
+   * FLIP helper: after the DOM is rebuilt, reads each staying item's new
+   * top-offset, computes the delta from its snapshot, and plays a smooth
+   * translateY transition from the old position to the new one.
+   */
+  function flipStayingItems($container, firstPositions, stayingIds, isTable) {
+    var movingClass = isTable
+      ? "doc-search-row--moving"
+      : "doc-search-result--moving";
+
+    stayingIds.forEach(function (id) {
+      if (!(id in firstPositions)) return;
+      var el = $container.find('[data-result-id="' + id + '"]')[0];
+      if (!el) return;
+      var lastTop = el.getBoundingClientRect().top;
+      var delta = firstPositions[id] - lastTop;
+      if (delta === 0) return;
+
+      // Invert: jump to old position
+      el.style.transform = "translateY(" + delta + "px)";
+      el.style.transition = "none";
+
+      // Play: animate to new position
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          el.classList.add(movingClass);
+          el.style.transform = "";
+          el.style.transition = "";
+        });
+      });
+    });
+
+    // Clean up moving class after transition
+    setTimeout(function () {
+      stayingIds.forEach(function (id) {
+        $container
+          .find('[data-result-id="' + id + '"]')
+          .removeClass(movingClass);
+      });
+    }, 300);
   }
 
   function applyFilters() {
@@ -508,28 +581,93 @@
       }
       return true;
     });
-    renderPage(1);
-    updateMobileFilterCount();
+
+    // Compute new page 1 slice and diff against currently visible items
+    var perPage = resultsPerPage();
+    var newSlice = filteredResults.slice(0, perPage);
+    var newIds = new Set(newSlice.map(resultId));
+    var isTable = isTableView();
+
+    // Determine which items are leaving, entering, or staying
+    var leavingIds = new Set();
+    visibleResultIds.forEach(function (id) {
+      if (!newIds.has(id)) leavingIds.add(id);
+    });
+    var enteringIds = new Set();
+    newIds.forEach(function (id) {
+      if (!visibleResultIds.has(id)) enteringIds.add(id);
+    });
+    var stayingIds = new Set();
+    newIds.forEach(function (id) {
+      if (visibleResultIds.has(id)) stayingIds.add(id);
+    });
+
+    clearTimeout(filterAnimTimeout);
+
+    var $container = isTable
+      ? $("#doc-search-table-body")
+      : $("#doc-search-results-list");
+
+    // If nothing is leaving, render immediately with enter + FLIP animations
+    if (leavingIds.size === 0) {
+      var firstPos = snapshotPositions($container, stayingIds);
+      renderPage(1, enteringIds);
+      updateMobileFilterCount();
+      flipStayingItems($container, firstPos, stayingIds, isTable);
+      filterAnimTimeout = setTimeout(function () {
+        $("[data-result-id]")
+          .removeClass("doc-search-result--entering")
+          .removeClass("doc-search-row--entering");
+      }, 300);
+      return;
+    }
+
+    // Snapshot positions of staying items before leave animation
+    var firstPos = snapshotPositions($container, stayingIds);
+
+    // Animate leaving items out
+    leavingIds.forEach(function (id) {
+      var $el = $container.find('[data-result-id="' + id + '"]');
+      $el.addClass(
+        isTable ? "doc-search-row--leaving" : "doc-search-result--leaving",
+      );
+    });
+
+    // After leave animation, rebuild with enter + FLIP animations
+    filterAnimTimeout = setTimeout(function () {
+      renderPage(1, enteringIds);
+      updateMobileFilterCount();
+      flipStayingItems($container, firstPos, stayingIds, isTable);
+
+      filterAnimTimeout = setTimeout(function () {
+        $("[data-result-id]")
+          .removeClass("doc-search-result--entering")
+          .removeClass("doc-search-row--entering");
+      }, 300);
+    }, 220);
   }
 
   // ── Render a page ──────────────────────────────────────────────────────────
   /**
    * Slices filteredResults to the requested page, renders card or table rows,
-   * then updates the summary line and pagination bar.
-   * @param {number} page  1-based page number to display.
+   * then updates the summary line and pagination bar. Also records the set of
+   * visible result IDs so the next applyFilters() call can diff against it.
+   * @param {number} page         1-based page number to display.
+   * @param {Set}    [enteringIds] Result IDs that should receive an enter animation.
    */
-  function renderPage(page) {
+  function renderPage(page, enteringIds) {
     currentPage = page;
     var perPage = resultsPerPage();
     var start = (page - 1) * perPage;
     var pageSlice = filteredResults.slice(start, start + perPage);
 
     if (isTableView()) {
-      renderTableResults(pageSlice);
+      renderTableResults(pageSlice, enteringIds);
     } else {
-      renderCardResults(pageSlice);
+      renderCardResults(pageSlice, enteringIds);
     }
 
+    visibleResultIds = new Set(pageSlice.map(resultId));
     updateResultsSummary();
     renderPagination();
   }
@@ -537,11 +675,13 @@
   // ── Card results ─────────────────────────────────────────────────────────────
   /**
    * Renders a page slice as cloned .search-template <li> cards into
-   * #doc-search-results-list. Collection row is shown only when both
-   * raw.collectionname AND raw.collectionurl are present.
-   * @param {Array} results  Slice of filteredResults for the current page.
+   * #doc-search-results-list. Each card receives a data-result-id attribute
+   * for identity tracking. Cards whose IDs appear in enteringIds get the
+   * --entering animation class.
+   * @param {Array} results       Slice of filteredResults for the current page.
+   * @param {Set}   [enteringIds] Result IDs that should receive an enter animation.
    */
-  function renderCardResults(results) {
+  function renderCardResults(results, enteringIds) {
     var $list = $("#doc-search-results-list");
     var $template = $(".search-template");
 
@@ -549,10 +689,16 @@
 
     results.forEach(function (result) {
       var raw = result.raw || {};
+      var id = resultId(result);
       var $item = $template
         .clone()
         .removeClass("search-template")
-        .removeAttr("hidden");
+        .removeAttr("hidden")
+        .attr("data-result-id", id);
+
+      if (enteringIds && enteringIds.has(id)) {
+        $item.addClass("doc-search-result--entering");
+      }
 
       // Title + link
       var assetUrl = raw.asseturl || result.clickUri || "#";
@@ -569,7 +715,7 @@
       // Description
       $item
         .find('[data-ref="search-result-description"]')
-        .text(raw.resourcedescription || result.excerpt || "");
+        .text(raw.description || result.excerpt || "");
 
       // Category (hidden data attribute for filter matching)
       $item.attr("data-category", raw.category || "");
@@ -607,10 +753,12 @@
   // ── Table results ─────────────────────────────────────────────────────────────
   /**
    * Renders a page slice as <tr> rows into #doc-search-table-body.
-   * Collection cell: href = raw.collectionurl; text = raw.collectionname.
-   * @param {Array} results  Slice of filteredResults for the current page.
+   * Each row receives a data-result-id attribute for identity tracking.
+   * Rows whose IDs appear in enteringIds get the --entering animation class.
+   * @param {Array} results       Slice of filteredResults for the current page.
+   * @param {Set}   [enteringIds] Result IDs that should receive an enter animation.
    */
-  function renderTableResults(results) {
+  function renderTableResults(results, enteringIds) {
     var $tbody = $("#doc-search-table-body");
     $tbody.empty();
 
@@ -660,7 +808,12 @@
           "</td>" +
           "</tr>",
       );
+      var id = resultId(result);
+      $row.attr("data-result-id", id);
       $row.attr("data-category", raw.category || "");
+      if (enteringIds && enteringIds.has(id)) {
+        $row.addClass("doc-search-row--entering");
+      }
       $tbody.append($row);
     });
   }

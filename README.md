@@ -111,9 +111,9 @@ A static preview of the search and collection pages is automatically deployed to
 
 **Live URL:** `https://ntgovernment.github.io/document-library/`
 
-| Page | URL |
-|------|-----|
-| Search | `https://ntgovernment.github.io/document-library/` |
+| Page                 | URL                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Search               | `https://ntgovernment.github.io/document-library/`                                   |
 | Collection (example) | `https://ntgovernment.github.io/document-library/collection/gifts-and-benefits.html` |
 
 ### How it works
@@ -127,10 +127,12 @@ node scripts/generate-collection-pages.js     # 3. Static HTML generation
 ```
 
 Step 3 (`generate-collection-pages.js`) produces:
+
 - **`index.html`** at the repo root — the search page, derived from `search-section-preview.html` with all NTG CDN asset refs replaced by local relative paths and the `<title>` updated.
 - **`collection/<slug>.html`** — one page per collection (7 total), derived from `collection-page-preview.html` + the Coveo mock data. Each page gets the full document list, a back-to-search link, and a "Related policies" section linking to the other 6 collections.
 
 GitHub Actions (`.github/workflows/deploy.yml`) then:
+
 1. Runs `npm ci` and `npm run build`
 2. Assembles a `_site/` staging directory, copying `index.html`, `.nojekyll`, `collection/*.html`, `dist/`, and all referenced `src/vendor/`, `src/css/`, `src/js/`, and `src/mock/` assets
 3. Deploys `_site/` to the `gh-pages` branch via `actions/deploy-pages@v4`
@@ -164,13 +166,13 @@ This runs whenever `window.location.hostname` is `localhost`, `127.0.0.1`, or en
 
 ### GitHub Pages vs production
 
-| Aspect | GitHub Pages | Production (Matrix) |
-|--------|-------------|---------------------|
-| Data source | Mock JSON (43 results, static) | Live Coveo REST API |
-| Hosting | GitHub Pages static files | Squiz Matrix CMS |
-| Authentication | None (public) | NTG intranet login |
-| Collection pages | Static HTML (generated from mock) | Dynamic Matrix pages |
-| Purpose | Development preview and demos | Live intranet service |
+| Aspect           | GitHub Pages                      | Production (Matrix)   |
+| ---------------- | --------------------------------- | --------------------- |
+| Data source      | Mock JSON (43 results, static)    | Live Coveo REST API   |
+| Hosting          | GitHub Pages static files         | Squiz Matrix CMS      |
+| Authentication   | None (public)                     | NTG intranet login    |
+| Collection pages | Static HTML (generated from mock) | Dynamic Matrix pages  |
+| Purpose          | Development preview and demos     | Live intranet service |
 
 > GitHub Pages is a **preview environment**, not a production mirror. It always serves the same 43 mock results regardless of query, and collection page data is baked in at build time.
 
@@ -217,7 +219,7 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 | Environment                               | Data source                                                             |
 | ----------------------------------------- | ----------------------------------------------------------------------- |
 | `localhost` / `127.0.0.1`                 | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
-| `*.github.io` (GitHub Pages)              | `src/mock/coveo-search-rest-api-query.json` (same mock data, no VPN)   |
+| `*.github.io` (GitHub Pages)              | `src/mock/coveo-search-rest-api-query.json` (same mock data, no VPN)    |
 | All other hostnames (production intranet) | Live Coveo REST API at `search-internal.nt.gov.au`                      |
 
 The mock JSON always returns the same 43 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
@@ -676,7 +678,7 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                                                                           |
 | `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                                 |
 | `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute.                |
-| `search-result-description`     | `raw.resourcedescription \|\| result.excerpt`                                                                                                                                                 |
+| `search-result-description`     | `raw.description \|\| result.excerpt`                                                                                                                                                         |
 | `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` is absent/empty or the literal `"none"`, or when `raw.collectionurl` is absent — all three conditions must pass for the row to show |
 | `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                    |
 | `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                         |
@@ -950,4 +952,3 @@ Google Analytics 4 via Google Tag Manager. Tag ID: `G-WY2GK59DRN`. GTM is loaded
 - **The `_site/` directory in the CI workflow is ephemeral.** `deploy.yml` assembles `_site/` in the GitHub Actions runner workspace during the deployment job and uploads it as a Pages artifact. It is never committed to the repository. The `gh-pages` branch is also managed entirely by the GitHub Actions deployment and should not be edited directly.
 
 - **`MOCK_URL` in `coveo-search.js` must be a relative path.** The value is `"./src/mock/coveo-search-rest-api-query.json"` — relative to the page, not to the js file. This works on both `localhost` (served by Vite from the repo root) and GitHub Pages (where the file is served from `_site/src/mock/...`). Do not change it to an absolute path or a root-relative path starting with `/`.
-
