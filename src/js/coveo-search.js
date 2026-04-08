@@ -69,10 +69,13 @@
  * Card template data-ref slots (inside .search-template):
  *   [data-ref="search-result-link"]            <a> href = asseturl
  *   [data-ref="search-result-title"]           document title with formatFileMeta() suffix
- *                                                e.g. "My Document (PDF, 354.2 KB)"
+ *                                                e.g. "My Document (PDF 354.2 KB)"
  *   [data-ref="search-result-extlink"]         external-link icon — permanently hidden (display:none in CSS; JS does not remove hidden attr)
  *   [data-ref="search-result-description"]     description / excerpt text
- *   [data-ref="search-result-collection-row"]  entire row hidden when no collection
+ *   [data-ref="search-result-collection-row"]  entire row hidden when no collection; contains a static
+ *                                               16×16 folder icon SVG (.doc-search-result__collection-icon)
+ *                                               positioned 3px above the text baseline (top: -3px) with a
+ *                                               2px right margin; JS does not modify the icon element
  *   [data-ref="search-result-collection"]      collection name text (raw.collectionname)
  *   [data-ref="search-result-collection-link"] <a> href = raw.collectionurl
  *   [data-ref="search-result-doctype"]         doctype badge text
@@ -113,7 +116,7 @@
  *   (raw.resourcefriendlytitle || result.title) + formatFileMeta(raw)
  * formatFileMeta() appends a parenthetical suffix when raw.resourcetype and/or
  * raw.resourcefilesize are present — for example:
- *   "My Document (PDF, 354.2 KB)"   — both type and size present
+ *   "My Document (PDF 354.2 KB)"    — both type and size present
  *   "My Document (DOCX)"            — type only (size absent)
  *   "My Document (58.5 KB)"         — size only (type unmapped or absent)
  *   "My Document"                   — neither present
@@ -284,12 +287,12 @@
    * Returns an empty string when neither raw.resourcetype nor raw.resourcefilesize
    * is present.
    * @param {Object} raw  result.raw from the Coveo API response.
-   * @returns {string}  e.g. " (PDF, 354.2 KB)", " (DOCX)", " (58.5 KB)", or "".
+   * @returns {string}  e.g. " (PDF 354.2 KB)", " (DOCX)", " (58.5 KB)", or "".
    */
   function formatFileMeta(raw) {
     var ext = FILE_TYPE_LABELS[raw.resourcetype] || "";
     var size = raw.resourcefilesize || "";
-    if (ext && size) return " (" + ext + ", " + size + ")";
+    if (ext && size) return " (" + ext + " " + size + ")";
     if (ext) return " (" + ext + ")";
     if (size) return " (" + size + ")";
     return "";

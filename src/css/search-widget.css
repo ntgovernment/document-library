@@ -327,9 +327,9 @@ tr.doc-search-row--moving {
 
 .doc-search-result__collection-icon {
   vertical-align: middle;
-  margin-right: 4px;
+  margin-right: 2px;
   position: relative;
-  top: -1px;
+  top: -3px;
 }
 
 .doc-search-result__collection-row[hidden] {
