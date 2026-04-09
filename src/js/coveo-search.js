@@ -965,9 +965,34 @@
                 });
               }),
             ).then(function (results) {
-              $card
-                .find('[data-ref="search-result-page-ids"]')
-                .text(JSON.stringify(results, null, 2));
+              // Collect page links from page_contents_parents
+              var pageLinks = [];
+              results.forEach(function (r) {
+                if (r.page_contents_parents && r.page_contents_parents.length) {
+                  r.page_contents_parents.forEach(function (p) {
+                    if (
+                      p.asset &&
+                      p.asset.attributes &&
+                      p.asset.attributes.short_name
+                    ) {
+                      pageLinks.push(
+                        '<a href="./?a=' +
+                          p.major_id +
+                          '">' +
+                          $("<span>").text(p.asset.attributes.short_name).html() +
+                          "</a>",
+                      );
+                    }
+                  });
+                }
+              });
+              if (pageLinks.length) {
+                $card
+                  .find('[data-ref="search-result-page-ids"]')
+                  .html(pageLinks.join(", "));
+              } else {
+                $pageRow.attr("hidden", "");
+              }
             });
           });
         })($item, assetAssetId);

@@ -350,8 +350,6 @@ tr.doc-search-row--moving {
   font-size: var(--font-size-xs);
   color: var(--clr-text-alt);
   margin-bottom: 4px;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .doc-search-result__page-icon {
