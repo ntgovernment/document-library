@@ -924,11 +924,43 @@
                       )
                     : Promise.resolve([]);
                   return assetFetches.then(function (assets) {
-                    return {
-                      major_id: id,
-                      links: childLinks,
-                      hidden_assets: assets,
-                    };
+                    // Check hidden assets for "Page Contents" — if found, fetch major_id - 1
+                    var pageContentAssets = assets.filter(function (a) {
+                      return (
+                        a.asset &&
+                        a.asset.attributes &&
+                        a.asset.attributes.name === "Page Contents"
+                      );
+                    });
+                    var parentFetches = pageContentAssets.length
+                      ? Promise.all(
+                          pageContentAssets.map(function (a) {
+                            var parentId = String(Number(a.major_id) - 1);
+                            return (
+                              isDev
+                                ? Promise.resolve({
+                                    id: parentId,
+                                    name: "(mock asset " + parentId + ")",
+                                  })
+                                : matrixApiFetch("assets/" + parentId)
+                            )
+                              .then(function (asset) {
+                                return { major_id: parentId, asset: asset };
+                              })
+                              .catch(function () {
+                                return { major_id: parentId, asset: null };
+                              });
+                          }),
+                        )
+                      : Promise.resolve([]);
+                    return parentFetches.then(function (parents) {
+                      return {
+                        major_id: id,
+                        links: childLinks,
+                        hidden_assets: assets,
+                        page_contents_parents: parents,
+                      };
+                    });
                   });
                 });
               }),
