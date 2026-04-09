@@ -885,9 +885,24 @@
             .find('[data-ref="search-result-page-ids"]')
             .text("Loading\u2026");
           fetchPageLinks(cardAssetId).then(function (links) {
-            $card
-              .find('[data-ref="search-result-page-ids"]')
-              .text(JSON.stringify(links, null, 2));
+            var refIds = getPageMajorIds(links);
+            if (!refIds.length) {
+              $card
+                .find('[data-ref="search-result-page-ids"]')
+                .text(JSON.stringify(links, null, 2));
+              return;
+            }
+            Promise.all(
+              refIds.map(function (id) {
+                return fetchPageLinks(id).then(function (childLinks) {
+                  return { major_id: id, links: childLinks };
+                });
+              }),
+            ).then(function (results) {
+              $card
+                .find('[data-ref="search-result-page-ids"]')
+                .text(JSON.stringify(results, null, 2));
+            });
           });
         })($item, assetAssetId);
       }
