@@ -966,6 +966,7 @@
               }),
             ).then(function (results) {
               // Collect all page_contents_parents across reference chains
+              var seen = {};
               var links = [];
               results.forEach(function (r) {
                 (r.page_contents_parents || []).forEach(function (p) {
@@ -980,7 +981,8 @@
                       p.asset.attributes.name ||
                       "";
                     var path = p.asset.urls[0].path || "";
-                    if (name && path) {
+                    if (name && path && !seen[path]) {
+                      seen[path] = true;
                       links.push(
                         '<a href="https://' +
                           $("<span>").text(path).html() +
@@ -997,7 +999,7 @@
                   .find('[data-ref="search-result-page-ids"]')
                   .html(links.join(", "));
               } else {
-                $card.find('[data-ref="search-result-page-ids"]').text("—");
+                $pageRow.attr("hidden", true);
               }
             });
           });
