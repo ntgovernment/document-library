@@ -320,9 +320,7 @@ tr.doc-search-row--moving {
 
 /* Collection link row */
 .doc-search-result__collection-row {
-  font-size: var(--font-size-xs);
-  color: var(--clr-text-alt);
-  margin-bottom: 12px;
+  display: none;
 }
 
 .doc-search-result__collection-icon {
