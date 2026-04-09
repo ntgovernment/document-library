@@ -993,6 +993,11 @@
                 });
               });
               if (links.length) {
+                if (links.length > 1) {
+                  $card
+                    .find('[data-ref="search-result-page-label"]')
+                    .text("Pages:");
+                }
                 $card
                   .find('[data-ref="search-result-page-ids"]')
                   .html(links.join(", "));
