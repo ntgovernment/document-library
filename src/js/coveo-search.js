@@ -965,9 +965,40 @@
                 });
               }),
             ).then(function (results) {
-              $card
-                .find('[data-ref="search-result-page-ids"]')
-                .text(JSON.stringify(results, null, 2));
+              // Collect all page_contents_parents across reference chains
+              var links = [];
+              results.forEach(function (r) {
+                (r.page_contents_parents || []).forEach(function (p) {
+                  if (
+                    p.asset &&
+                    p.asset.attributes &&
+                    p.asset.urls &&
+                    p.asset.urls.length
+                  ) {
+                    var name =
+                      p.asset.attributes.short_name ||
+                      p.asset.attributes.name ||
+                      "";
+                    var path = p.asset.urls[0].path || "";
+                    if (name && path) {
+                      links.push(
+                        '<a href="https://' +
+                          $("<span>").text(path).html() +
+                          '">' +
+                          $("<span>").text(name).html() +
+                          "</a>",
+                      );
+                    }
+                  }
+                });
+              });
+              if (links.length) {
+                $card
+                  .find('[data-ref="search-result-page-ids"]')
+                  .html(links.join(", "));
+              } else {
+                $card.find('[data-ref="search-result-page-ids"]').text("—");
+              }
             });
           });
         })($item, assetAssetId);
