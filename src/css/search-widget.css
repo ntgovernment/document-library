@@ -353,7 +353,7 @@ tr.doc-search-row--moving {
 }
 
 .doc-search-result__page-row a {
-  color: var(--clr-tertiary);
+  color: #343741;
   text-decoration: underline;
 }
 
@@ -568,7 +568,7 @@ tr.doc-search-row--moving {
 }
 
 .doc-search-pagination__btn--active {
-  background: var(--clr-surface-selected);
+  background: var(--clr-text-default);
   color: var(--clr-white);
   font-weight: var(--font-weight-bold);
   cursor: default;
