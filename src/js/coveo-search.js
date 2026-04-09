@@ -887,9 +887,7 @@
           fetchPageLinks(cardAssetId).then(function (links) {
             var refIds = getPageMajorIds(links);
             if (!refIds.length) {
-              $card
-                .find('[data-ref="search-result-page-ids"]')
-                .text(JSON.stringify(links, null, 2));
+              $pageRow.attr("hidden", true);
               return;
             }
             Promise.all(
