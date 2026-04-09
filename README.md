@@ -300,7 +300,7 @@ document-library/
 │   │   ├── main.css                          # NTG central stylesheet (~13,900 lines) — loaded by Matrix, NOT bundled
 │   │   └── status-toolbar.css                # Dev/test status toolbar styles — loaded by Matrix, NOT bundled
 │   ├── mock/
-│   │   ├── coveo-search-rest-api-query.json  # 189-result Coveo API snapshot for local dev
+│   │   ├── coveo-search-rest-api-query.json  # 43-result Coveo API snapshot for local dev
 │   │   └── matrix-asset-links.json           # Mock upstream page-link responses keyed by assetId for local dev
 │   └── vendor/                               ← Third-party locked dependencies — do not edit
 │       ├── js/
@@ -391,21 +391,21 @@ All CSS custom properties (design tokens) are declared in **[`src/css/tokens.css
 
 ### Colour tokens
 
-| Token                    | Value     | Usage                                                       |
-| ------------------------ | --------- | ----------------------------------------------------------- |
-| `--clr-primary`          | `#343741` | NTG body text                                               |
-| `--clr-text-default`     | `#102040` | Widget body text, links (`--clr-link-default` is an alias)  |
-| `--clr-link-default`     | `#102040` | All link colours                                            |
-| `--clr-link-hover`       | `#208820` | Link hover state; collection page back-to-search arrow icon |
-| `--clr-text-alt`         | `#384560` | Secondary text, input placeholder                           |
-| `--clr-text-emphasis`    | `#208820` | Emphasis / positive text (green)                            |
-| `--clr-border-subtle`    | `#d0e0e0` | Borders, outlines                                           |
-| `--clr-bg-default`       | `#ffffff` | Input background                                            |
-| `--clr-bg-shade`         | `#f5f5f7` | Card/item background (collection page)                      |
-| `--clr-bg-shade-alt`     | `#ecf0f0` | Results area background (search widget)                     |
-| `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)                                     |
-| `--clr-icon-default`     | `#208820` | Prev/Next pagination icon hover                             |
-| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on)                        |
+| Token                    | Value     | Usage                                                                                                  |
+| ------------------------ | --------- | ------------------------------------------------------------------------------------------------------ |
+| `--clr-primary`          | `#343741` | NTG body text                                                                                          |
+| `--clr-text-default`     | `#102040` | Widget body text, links (`--clr-link-default` is an alias)                                             |
+| `--clr-link-default`     | `#102040` | All link colours                                                                                       |
+| `--clr-tertiary`         | `#167abe` | Search result title links, table title links, collection links, page row links, "Apply filters" button |
+| `--clr-text-alt`         | `#384560` | Secondary text, input placeholder                                                                      |
+| `--clr-text-emphasis`    | `#208820` | Emphasis / positive text (green)                                                                       |
+| `--clr-border-subtle`    | `#d0e0e0` | Borders, outlines                                                                                      |
+| `--clr-bg-default`       | `#ffffff` | Input background                                                                                       |
+| `--clr-bg-shade`         | `#f5f5f7` | Card/item background (collection page)                                                                 |
+| `--clr-bg-shade-alt`     | `#ecf0f0` | Results area background (search widget)                                                                |
+| `--clr-icon-subtle`      | `#878f9f` | Toggle pill (off state)                                                                                |
+| `--clr-icon-default`     | `#208820` | Prev/Next pagination icon hover                                                                        |
+| `--clr-surface-selected` | `#107810` | Active pagination page / toggle (on)                                                                   |
 
 ### Typography tokens
 
@@ -413,9 +413,9 @@ All CSS custom properties (design tokens) are declared in **[`src/css/tokens.css
 | ------------------------ | ------------------ |
 | `--font-size-xs`         | `0.875rem` (14 px) |
 | `--font-size-sm`         | `1rem` (16 px)     |
-| `--font-size-md`         | `1.125rem` (18 px) |
-| `--font-size-lg`         | `1.25rem` (20 px)  |
-| `--font-size-xl`         | `1.5rem` (24 px)   |
+| `--font-size-md`         | `1.25rem` (20 px)  |
+| `--font-size-lg`         | `1.375rem` (22 px) |
+| `--font-size-xl`         | `1.625rem` (26 px) |
 | `--font-size-2xl`        | `1.875rem` (30 px) |
 | `--font-size-3xl`        | `2.25rem` (36 px)  |
 | `--font-weight-regular`  | `400`              |
@@ -665,33 +665,35 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 
 **Module state (inside the IIFE):**
 
-| Variable                | Type   | Purpose                                                                                           |
-| ----------------------- | ------ | ------------------------------------------------------------------------------------------------- |
-| `originalResults`       | Array  | Raw API response order — restored when sort is set back to "Relevance"                            |
-| `allResults`            | Array  | Sorted copy of `originalResults`; source for filter and render operations                         |
-| `filteredResults`       | Array  | Subset of `allResults` after applying active checkbox filters                                     |
-| `currentPage`           | Number | Current pagination page (1-based)                                                                 |
-| `activeTypeFilters`     | Set    | Checked values under the Type facet                                                               |
-| `activeCategoryFilters` | Set    | Checked values under the Category facet                                                           |
-| `currentSort`           | String | Active sort — `"relevancy"` \| `"date descending"` \| `"alpha ascending"` \| `"alpha descending"` |
-| `currentQuery`          | String | Last query string passed to `runSearch()`                                                         |
+| Variable                | Type   | Purpose                                                                                                                                                                                                                                                  |
+| ----------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `masterResults`         | Array  | Complete document corpus (all results for an empty query); populated once on the first `runSearch()` call and never cleared; provides the stable value list for all facets so Type/Category options do not disappear when a query narrows the result set |
+| `originalResults`       | Array  | Raw API response order for the current query — restored when sort is set back to "Relevance"                                                                                                                                                             |
+| `allResults`            | Array  | Sorted copy of `originalResults`; source for filter and render operations                                                                                                                                                                                |
+| `filteredResults`       | Array  | Subset of `allResults` after applying active checkbox filters                                                                                                                                                                                            |
+| `currentPage`           | Number | Current pagination page (1-based)                                                                                                                                                                                                                        |
+| `activeTypeFilters`     | Set    | Checked values under the Type facet                                                                                                                                                                                                                      |
+| `activeCategoryFilters` | Set    | Checked values under the Category facet                                                                                                                                                                                                                  |
+| `currentSort`           | String | Active sort — `"relevancy"` \| `"date descending"` \| `"alpha ascending"` \| `"alpha descending"`                                                                                                                                                        |
+| `currentQuery`          | String | Last query string passed to `runSearch()`                                                                                                                                                                                                                |
+| `matrixMockCache`       | Object | Cached contents of `matrix-asset-links.json` (dev mode only); `null` until the first `fetchPageLinks()` call, then populated and reused for all subsequent calls on the same page load                                                                   |
 
 **`data-ref` bindings** (attributes on elements inside `.search-template`, populated by `renderCardResults()`):
 
-| `data-ref` value                | Coveo API field                                                                                                                                                                               |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                                                                           |
-| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title`                                                                                                                                                 |
-| `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute.                |
-| `search-result-description`     | `raw.description \|\| result.excerpt`                                                                                                                                                         |
-| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` is absent/empty or the literal `"none"`, or when `raw.collectionurl` is absent — all three conditions must pass for the row to show |
-| `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                    |
-| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                         |
-| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                                            |
-| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                                             |
-| `search-result-page-row`        | Page row container `<div>` — hidden by default; unhidden when `raw.assetassetid` is present, then re-hidden if upstream link resolution finds no pages                                        |
-| `search-result-page-label`      | `<span>` containing `Page:` (singular) or `Pages:` (plural) — JS changes text to `Pages:` when more than one link is resolved                                                                 |
-| `search-result-page-ids`        | `<span>` populated with `<a>` links to resolved parent pages (comma-separated), or left empty (row hidden) when none found                                                                    |
+| `data-ref` value                | Coveo API field                                                                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-result-link`            | `raw.asseturl \|\| result.clickUri` — set as `href`                                                                                                                                                                 |
+| `search-result-title`           | `raw.resourcefriendlytitle \|\| result.title` with `formatFileMeta()` suffix appended — e.g. `"My Document (PDF 354.2 KB)"`, `"My Document (DOCX)"`, or `"My Document (58.5 KB)"` when type/size fields are present |
+| `search-result-extlink`         | **Unused — icon is permanently hidden.** The SVG is present in the template with `hidden` and `display: none`, but `coveo-search.js` no longer removes the `hidden` attribute.                                      |
+| `search-result-description`     | `raw.description \|\| result.excerpt`                                                                                                                                                                               |
+| `search-result-collection-row`  | Hidden (via `hidden` attribute) when `raw.collectionname` is absent/empty or the literal `"none"`, or when `raw.collectionurl` is absent — all three conditions must pass for the row to show                       |
+| `search-result-collection`      | `raw.collectionname` — human-readable collection name set as the link text                                                                                                                                          |
+| `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                                               |
+| `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                                                                  |
+| `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                                                                   |
+| `search-result-page-row`        | Page row container `<div>` — hidden by default; unhidden when `raw.assetassetid` is present, then re-hidden if upstream link resolution finds no pages                                                              |
+| `search-result-page-label`      | `<span>` containing `Page:` (singular) or `Pages:` (plural) — JS changes text to `Pages:` when more than one link is resolved                                                                                       |
+| `search-result-page-ids`        | `<span>` populated with `<a>` links to resolved parent pages (comma-separated), or left empty (row hidden) when none found                                                                                          |
 
 **Page row — upstream link resolution:**
 
