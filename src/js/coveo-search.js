@@ -840,7 +840,7 @@
           .attr("hidden", true);
       }
 
-      // Page row — async fetch of upstream reference links
+      // Page row — async fetch of upstream reference links (DEBUG: raw JSON)
       var assetAssetId = raw.assetassetid || "";
       if (assetAssetId) {
         (function ($card, cardAssetId) {
@@ -850,14 +850,9 @@
             .find('[data-ref="search-result-page-ids"]')
             .text("Loading\u2026");
           fetchPageLinks(cardAssetId).then(function (links) {
-            var majorIds = getPageMajorIds(links);
-            if (majorIds.length) {
-              $card
-                .find('[data-ref="search-result-page-ids"]')
-                .text(majorIds.join(", "));
-            } else {
-              $pageRow.attr("hidden", true);
-            }
+            $card
+              .find('[data-ref="search-result-page-ids"]')
+              .text(JSON.stringify(links));
           });
         })($item, assetAssetId);
       }
