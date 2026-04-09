@@ -689,6 +689,27 @@ Sorting is performed **client-side** via `applySort()` after every fetch and aft
 | `search-result-collection-link` | `raw.collectionurl` — set as `href`; `raw.collectionname` is the link text. Row is hidden (not this element) when either field is absent or `"none"`.                                         |
 | `search-result-doctype`         | `raw.resourcedoctype` (rendered as a tag `<span>`)                                                                                                                                            |
 | `search-result-last-updated`    | `raw.resourceupdated` — formatted by `formatDate()` as `D\u00a0MMMM YYYY` (e.g. `5 March 2026`); non-breaking space prevents day/month line-break                                             |
+| `search-result-page-row`        | Page row container `<div>` — hidden by default; unhidden when `raw.assetassetid` is present, then re-hidden if upstream link resolution finds no pages                                        |
+| `search-result-page-label`      | `<span>` containing `Page:` (singular) or `Pages:` (plural) — JS changes text to `Pages:` when more than one link is resolved                                                                 |
+| `search-result-page-ids`        | `<span>` populated with `<a>` links to resolved parent pages (comma-separated), or left empty (row hidden) when none found                                                                    |
+
+**Page row — upstream link resolution:**
+
+Each search result card can display a "Page:" or "Pages:" row showing which intranet pages contain the document. This is resolved at render time via the Squiz Matrix Management API (`/assets/{id}/links`). The resolution chain:
+
+1. `fetchPageLinks(assetassetid)` — fetch upstream links for the document asset
+2. Filter for `link_type === "reference"` → collect `major_id` values
+3. For each reference `major_id`, fetch its links → filter for `link_type === "hidden"` entries
+4. For each hidden entry, fetch asset details via `matrixApiFetch("assets/" + hid)`
+5. If the asset has `attributes.name === "Page Contents"`, fetch `assets/{major_id - 1}` (the parent page)
+6. Extract `attributes.short_name` (falling back to `attributes.name`) and `urls[0].path` from the parent asset
+7. Render as `<a href="https://{path}">{short_name}</a>`, deduplicated by URL path
+
+The row is hidden when: no `assetassetid` is present, no reference links are found, or the resolution chain yields no page links. The label changes from "Page:" to "Pages:" when multiple links are resolved.
+
+**API authentication:** All Matrix Management API calls use Bearer token `eeaa62869ea5c7e751446454327cf135` via `matrixApiFetch()`.
+
+**Dev/mock mode:** When `isDev` is true (localhost, 127.0.0.1, or \*.github.io), `fetchPageLinks()` reads from `src/mock/matrix-asset-links.json` instead of calling the API. Hidden asset fetches return mock stubs.
 
 **`data-category` attribute:** Both card `<li>` elements (`renderCardResults()`) and table `<tr>` elements (`renderTableResults()`) carry a `data-category` attribute containing `raw.category` (empty string when absent). No visual display — this is a hidden data marker for DOM-level querying consistent with category filter values.
 
@@ -819,6 +840,9 @@ When changing internal card spacing, use `12px` as the baseline for all bottom m
 | `.doc-search-result__collection-row`            | "Collection: …" row                                                                                                                                                                                                                                                                                         |
 | `.doc-search-result__collection-icon`           | Inline SVG folder icon preceding "Collection:" — 12×12, `stroke="currentColor"`, `aria-hidden="true"`, vertically aligned to text baseline                                                                                                                                                                  |
 | `.doc-search-result__collection-link`           | Link to the parent collection                                                                                                                                                                                                                                                                               |
+| `.doc-search-result__page-row`                  | "Page: …" / "Pages: …" row — `font-size: var(--font-size-xs)`, `color: var(--clr-text-alt)`, `margin-bottom: 4px`; hidden by default, shown when upstream page links are resolved                                                                                                                           |
+| `.doc-search-result__page-row a`                | Page link `<a>` inside the page row — `color: var(--clr-tertiary)`, underlined                                                                                                                                                                                                                              |
+| `.doc-search-result__page-icon`                 | Inline SVG document icon preceding "Page:" — 16×16, `stroke="currentColor"`, `aria-hidden="true"`, vertically aligned to text baseline                                                                                                                                                                      |
 | `.doc-search-result__meta`                      | Flex row — doctype tag + last-updated date                                                                                                                                                                                                                                                                  |
 | `.doc-search-result__tag`                       | Document type tag `<span>` (e.g. "Policy") — `display: inline-flex`, `outline: 1px solid var(--clr-border-subtle)` (not `border`), **no `border-radius`**, 12px/700 uppercase Roboto                                                                                                                        |
 | `.doc-search-result__updated`                   | Last-updated date wrapper `<div>` — contains literal text `Last updated:` and an inner `<span [data-ref="search-result-last-updated"]>` with the formatted date (card view only; table view renders plain text directly in `<td>`)                                                                          |
