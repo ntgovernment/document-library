@@ -965,33 +965,21 @@
                 });
               }),
             ).then(function (results) {
-              // Collect page links from page_contents_parents
-              var pageLinks = [];
+              // Build <a> links from page_contents_parents
+              var anchors = [];
               results.forEach(function (r) {
                 if (r.page_contents_parents && r.page_contents_parents.length) {
                   r.page_contents_parents.forEach(function (p) {
-                    if (
-                      p.asset &&
-                      p.asset.attributes &&
-                      p.asset.attributes.short_name
-                    ) {
-                      pageLinks.push(
-                        '<a href="./?a=' +
-                          p.major_id +
-                          '">' +
-                          $("<span>")
-                            .text(p.asset.attributes.short_name)
-                            .html() +
-                          "</a>",
-                      );
+                    if (p.asset && p.asset.attributes && p.asset.attributes.short_name && p.asset.urls && p.asset.urls.length) {
+                      anchors.push('<a href="' + p.asset.urls[0] + '">' + p.asset.attributes.short_name + '</a>');
                     }
                   });
                 }
               });
-              if (pageLinks.length) {
+              if (anchors.length) {
                 $card
                   .find('[data-ref="search-result-page-ids"]')
-                  .html(pageLinks.join(", "));
+                  .html(anchors.join(", "));
               } else {
                 $pageRow.attr("hidden", "");
               }
