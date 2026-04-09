@@ -885,20 +885,9 @@
             .find('[data-ref="search-result-page-ids"]')
             .text("Loading\u2026");
           fetchPageLinks(cardAssetId).then(function (links) {
-            var majorIds = getPageMajorIds(links);
-            if (majorIds.length) {
-              resolveMenuParents(majorIds).then(function (menuIds) {
-                if (menuIds.length) {
-                  $card
-                    .find('[data-ref="search-result-page-ids"]')
-                    .text(menuIds.join(", "));
-                } else {
-                  $pageRow.attr("hidden", true);
-                }
-              });
-            } else {
-              $pageRow.attr("hidden", true);
-            }
+            $card
+              .find('[data-ref="search-result-page-ids"]')
+              .text(JSON.stringify(links, null, 2));
           });
         })($item, assetAssetId);
       }
