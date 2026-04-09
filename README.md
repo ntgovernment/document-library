@@ -219,8 +219,11 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 | Environment                               | Data source                                                             |
 | ----------------------------------------- | ----------------------------------------------------------------------- |
 | `localhost` / `127.0.0.1`                 | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
+|                                           | `src/mock/matrix-asset-links.json` (page links, no VPN needed)          |
 | `*.github.io` (GitHub Pages)              | `src/mock/coveo-search-rest-api-query.json` (same mock data, no VPN)    |
+|                                           | `src/mock/matrix-asset-links.json` (same mock page links, no VPN)       |
 | All other hostnames (production intranet) | Live Coveo REST API at `search-internal.nt.gov.au`                      |
+|                                           | Live Squiz Matrix Management API at `internal.nt.gov.au`                |
 
 The mock JSON always returns the same 43 results regardless of the query. It exercises the full rendering pipeline (filters, pagination, card/table view) without network access.
 
@@ -297,7 +300,8 @@ document-library/
 │   │   ├── main.css                          # NTG central stylesheet (~13,900 lines) — loaded by Matrix, NOT bundled
 │   │   └── status-toolbar.css                # Dev/test status toolbar styles — loaded by Matrix, NOT bundled
 │   ├── mock/
-│   │   └── coveo-search-rest-api-query.json  # 189-result Coveo API snapshot for local dev
+│   │   ├── coveo-search-rest-api-query.json  # 189-result Coveo API snapshot for local dev
+│   │   └── matrix-asset-links.json           # Mock upstream page-link responses keyed by assetId for local dev
 │   └── vendor/                               ← Third-party locked dependencies — do not edit
 │       ├── js/
 │       │   ├── jquery-3.4.1.min.js           # jQuery 3.4.1 (loaded by Matrix paint layout before this bundle)
@@ -372,6 +376,7 @@ document-library/
 | Add a file to the search bundle                            | Add `import './...'` to `src/search-page.js`          | `npm run build` → commit src+dist    |
 | Add a file to the collection bundle                        | Add `import './...'` to `src/collection-page.js`      | `npm run build` → commit src+dist    |
 | Change mock data for local testing                         | `src/mock/coveo-search-rest-api-query.json`           | No build needed (fetched at runtime) |
+| Change mock page-link data for local testing               | `src/mock/matrix-asset-links.json`                    | No build needed (fetched at runtime) |
 | Update GitHub Pages static page generation                 | `scripts/generate-collection-pages.js`                | `npm run build` → commit             |
 | Update GitHub Actions deployment workflow                  | `.github/workflows/deploy.yml`                        | Commit; triggers on push to main     |
 | Upgrade a vendor library                                   | Replace in `src/vendor/`; update Matrix page template | `npm run build` → commit             |

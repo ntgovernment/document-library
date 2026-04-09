@@ -22,6 +22,20 @@
  *
  * Dev detection: window.location.hostname is "localhost" or "127.0.0.1"
  *
+ * ── SQUIZ MATRIX MANAGEMENT API (page links) ────────────────────────────────
+ * Each search result has a raw.assetassetid field (the Squiz Matrix asset ID
+ * of the document). For card results, the script fetches upstream link
+ * relationships from the Squiz Matrix Management API to determine which pages
+ * reference the document:
+ *   Production:  GET https://internal.nt.gov.au/__management_api/v1/assets/{assetId}/links?direction=up
+ *   Dev/local:   /src/mock/matrix-asset-links.json  (static fixture keyed by assetId)
+ * Authorization: Bearer token (MATRIX_API_TOKEN constant).
+ * The response is an array of link objects; only entries with
+ * link_type === "reference" are displayed. Their major_id values are shown
+ * comma-separated in the "Page:" row on each card.
+ * Fetches are non-blocking — cards render immediately with "Loading…" text
+ * in the Page row; the row is hidden if no reference links exist.
+ *
  * Sorting is performed client-side after the full result set is received:
  *   applySort() is called after every fetch and after every sort radio button change.
  *   "relevancy"         — preserves the original API response order (originalResults)
@@ -47,6 +61,8 @@
  * result.raw.resourceupdated          — last-updated date (YYYY-MM-DD HH:mm:ss)
  * result.raw.resourcetype             — file type key (e.g. "pdf_file", "word_doc"); mapped to uppercase label
  * result.raw.resourcefilesize         — human-readable file size (e.g. "354.2 KB")
+ * result.raw.assetassetid              — Squiz Matrix asset ID; used to fetch upstream
+ *                                        page links from the Matrix Management API
  *
  * ── DOM CONTRACT ─────────────────────────────────────────────────────────────
  * IDs and attributes that must exist in the page HTML:
@@ -72,6 +88,12 @@
  *                                                e.g. "My Document (PDF 354.2 KB)"
  *   [data-ref="search-result-extlink"]         external-link icon — permanently hidden (display:none in CSS; JS does not remove hidden attr)
  *   [data-ref="search-result-description"]     description / excerpt text
+ *   [data-ref="search-result-page-row"]         entire row hidden when no reference page links;
+ *                                               contains a 16×16 document icon SVG
+ *                                               (.doc-search-result__page-icon) and a text span.
+ *                                               Populated asynchronously after card render.
+ *   [data-ref="search-result-page-ids"]         comma-separated major_id values of
+ *                                               reference-type upstream links (from Matrix API)
  *   [data-ref="search-result-collection-row"]  entire row hidden when no collection; contains a static
  *                                               16×16 folder icon SVG (.doc-search-result__collection-icon)
  *                                               positioned 3px above the text baseline (top: -3px) with a
@@ -107,6 +129,9 @@
  *   RESULTS_PER_PAGE_CARD   10      — cards shown per page
  *   RESULTS_PER_PAGE_TABLE  15      — rows shown per page in table view
  *   MAX_FACET_VISIBLE        7      — facet items visible before "Show all"
+ *   MATRIX_API_BASE         String  — Squiz Matrix Management API base URL
+ *   MATRIX_API_TOKEN        String  — Bearer token for the Management API
+ *   MATRIX_MOCK_URL         String  — local mock JSON for dev page-link lookups
  *   FILE_TYPE_LABELS        Object  — maps raw.resourcetype keys to uppercase display labels
  *                                     (e.g. "pdf_file" → "PDF", "word_doc" → "DOCX")
  *                                     Add entries here to support additional file types.
@@ -137,6 +162,8 @@
  *   activeCategoryFilters Set     — checked "Category" facet values (raw.category)
  *   currentSort           String  — "relevancy" | "date descending" | "alpha ascending" | "alpha descending"
  *   currentQuery          String  — last query string passed to runSearch()
+ *   matrixMockCache       Object  — cached contents of matrix-asset-links.json (dev mode only;
+ *                                   populated on first fetchPageLinks() call, null until then)
  *
  * ── SEARCH FLOW ──────────────────────────────────────────────────────────────
  * On form submit: the handler redirects to
@@ -186,6 +213,80 @@
   var COVEO_BASE_URL =
     "https://internal.nt.gov.au/dcdd/dev/policy-library/coveo/site/coveo-search-rest-api-query";
   var MOCK_URL = "./src/mock/coveo-search-rest-api-query.json";
+
+  // ── Squiz Matrix Management API (page-link lookups) ──────────────────────────
+  var MATRIX_API_BASE = "https://internal.nt.gov.au/__management_api/v1/";
+  var MATRIX_API_TOKEN = "eeaa62869ea5c7e751446454327cf135";
+  var MATRIX_MOCK_URL = "./src/mock/matrix-asset-links.json";
+  var matrixMockCache = null;
+
+  /**
+   * Fetch wrapper for the Squiz Matrix Management API.
+   * Sets the Authorization header with the bearer token.
+   * @param {string} path  Relative path appended to MATRIX_API_BASE.
+   * @returns {Promise<*>}
+   */
+  function matrixApiFetch(path) {
+    return fetch(MATRIX_API_BASE + path, {
+      headers: {
+        Authorization: "Bearer " + MATRIX_API_TOKEN,
+        "Content-Type": "application/json",
+      },
+    }).then(function (response) {
+      if (!response.ok)
+        throw new Error(response.status + " " + response.statusText);
+      return response.json();
+    });
+  }
+
+  /**
+   * Fetches upstream link relationships for an asset.
+   * In dev mode reads from the static mock JSON (keyed by assetId).
+   * In production calls GET assets/{assetId}/links?direction=up.
+   * @param {string} assetId  The Squiz Matrix asset ID (raw.assetassetid).
+   * @returns {Promise<Array>}  Array of link objects.
+   */
+  function fetchPageLinks(assetId) {
+    if (isDev) {
+      if (matrixMockCache) {
+        return Promise.resolve(matrixMockCache[assetId] || []);
+      }
+      return fetch(MATRIX_MOCK_URL)
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (data) {
+          matrixMockCache = data;
+          return data[assetId] || [];
+        })
+        .catch(function () {
+          return [];
+        });
+    }
+    return matrixApiFetch("assets/" + assetId + "/links?direction=up")
+      .then(function (data) {
+        return Array.isArray(data) ? data : [];
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
+  /**
+   * Filters a links array for "reference" link_type entries and returns
+   * an array of their major_id values.
+   * @param {Array} links  Array of link objects from the Matrix API.
+   * @returns {string[]}   major_id values for reference links.
+   */
+  function getPageMajorIds(links) {
+    return links
+      .filter(function (l) {
+        return l.link_type === "reference";
+      })
+      .map(function (l) {
+        return l.major_id;
+      });
+  }
 
   /**
    * When running on dev/GitHub Pages, rewrites an intranet collection URL
@@ -737,6 +838,28 @@
         $item
           .find('[data-ref="search-result-collection-row"]')
           .attr("hidden", true);
+      }
+
+      // Page row — async fetch of upstream reference links
+      var assetAssetId = raw.assetassetid || "";
+      if (assetAssetId) {
+        (function ($card, cardAssetId) {
+          var $pageRow = $card.find('[data-ref="search-result-page-row"]');
+          $pageRow.removeAttr("hidden");
+          $card
+            .find('[data-ref="search-result-page-ids"]')
+            .text("Loading\u2026");
+          fetchPageLinks(cardAssetId).then(function (links) {
+            var majorIds = getPageMajorIds(links);
+            if (majorIds.length) {
+              $card
+                .find('[data-ref="search-result-page-ids"]')
+                .text(majorIds.join(", "));
+            } else {
+              $pageRow.attr("hidden", true);
+            }
+          });
+        })($item, assetAssetId);
       }
 
       // Doctype tag

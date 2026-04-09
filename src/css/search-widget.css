@@ -345,6 +345,24 @@ tr.doc-search-row--moving {
   color: var(--clr-tertiary);
 }
 
+/* Page link row */
+.doc-search-result__page-row {
+  font-size: var(--font-size-xs);
+  color: var(--clr-text-alt);
+  margin-bottom: 4px;
+}
+
+.doc-search-result__page-icon {
+  vertical-align: middle;
+  margin-right: 2px;
+  position: relative;
+  top: -3px;
+}
+
+.doc-search-result__page-row[hidden] {
+  display: none;
+}
+
 /* Meta row: tag + date */
 .doc-search-result__meta {
   display: flex;
