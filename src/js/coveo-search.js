@@ -289,6 +289,41 @@
   }
 
   /**
+   * For each reference major_id, fetches its upstream links and returns
+   * the major_id values of any "menu" links found. This resolves the
+   * reference intermediary to the actual parent page.
+   * @param {string[]} refMajorIds  major_id values from reference links.
+   * @returns {Promise<string[]>}   Deduplicated major_id values from menu links.
+   */
+  function resolveMenuParents(refMajorIds) {
+    return Promise.all(
+      refMajorIds.map(function (id) {
+        return fetchPageLinks(id).then(function (links) {
+          return links
+            .filter(function (l) {
+              return l.link_type === "menu";
+            })
+            .map(function (l) {
+              return l.major_id;
+            });
+        });
+      }),
+    ).then(function (arrays) {
+      var seen = {};
+      var result = [];
+      arrays.forEach(function (ids) {
+        ids.forEach(function (id) {
+          if (!seen[id]) {
+            seen[id] = true;
+            result.push(id);
+          }
+        });
+      });
+      return result;
+    });
+  }
+
+  /**
    * When running on dev/GitHub Pages, rewrites an intranet collection URL
    * (https://internal.nt.gov.au/.../collections/<slug>) to a local relative
    * path (collection/<slug>.html). Returns the URL unchanged in production.
@@ -840,7 +875,7 @@
           .attr("hidden", true);
       }
 
-      // Page row — async fetch of upstream reference links (DEBUG: raw JSON)
+      // Page row — async fetch of upstream reference links
       var assetAssetId = raw.assetassetid || "";
       if (assetAssetId) {
         (function ($card, cardAssetId) {
@@ -850,9 +885,20 @@
             .find('[data-ref="search-result-page-ids"]')
             .text("Loading\u2026");
           fetchPageLinks(cardAssetId).then(function (links) {
-            $card
-              .find('[data-ref="search-result-page-ids"]')
-              .text(JSON.stringify(links));
+            var majorIds = getPageMajorIds(links);
+            if (majorIds.length) {
+              resolveMenuParents(majorIds).then(function (menuIds) {
+                if (menuIds.length) {
+                  $card
+                    .find('[data-ref="search-result-page-ids"]')
+                    .text(menuIds.join(", "));
+                } else {
+                  $pageRow.attr("hidden", true);
+                }
+              });
+            } else {
+              $pageRow.attr("hidden", true);
+            }
           });
         })($item, assetAssetId);
       }
