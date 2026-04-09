@@ -979,7 +979,9 @@
                         '<a href="./?a=' +
                           p.major_id +
                           '">' +
-                          $("<span>").text(p.asset.attributes.short_name).html() +
+                          $("<span>")
+                            .text(p.asset.attributes.short_name)
+                            .html() +
                           "</a>",
                       );
                     }
