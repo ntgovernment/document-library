@@ -895,7 +895,41 @@
             Promise.all(
               refIds.map(function (id) {
                 return fetchPageLinks(id).then(function (childLinks) {
-                  return { major_id: id, links: childLinks };
+                  // Find hidden link_type entries and fetch asset details
+                  var hiddenIds = childLinks
+                    .filter(function (l) {
+                      return l.link_type === "hidden";
+                    })
+                    .map(function (l) {
+                      return l.major_id;
+                    });
+                  var assetFetches = hiddenIds.length
+                    ? Promise.all(
+                        hiddenIds.map(function (hid) {
+                          return (
+                            isDev
+                              ? Promise.resolve({
+                                  id: hid,
+                                  name: "(mock asset " + hid + ")",
+                                })
+                              : matrixApiFetch("assets/" + hid)
+                          )
+                            .then(function (asset) {
+                              return { major_id: hid, asset: asset };
+                            })
+                            .catch(function () {
+                              return { major_id: hid, asset: null };
+                            });
+                        }),
+                      )
+                    : Promise.resolve([]);
+                  return assetFetches.then(function (assets) {
+                    return {
+                      major_id: id,
+                      links: childLinks,
+                      hidden_assets: assets,
+                    };
+                  });
                 });
               }),
             ).then(function (results) {
