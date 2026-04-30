@@ -530,6 +530,7 @@
 
   // ── Module state ─────────────────────────────────────────────────────────────
   var originalResults = []; // API response order — restored when sort = relevancy
+  var EXCLUDED_DOCTYPE = "Supporting document"; // hard-excluded from all result sets and facets
   var allResults = [];
   var filteredResults = [];
   var masterResults = []; // full corpus — all documents regardless of query; used to keep facet lists stable
@@ -616,8 +617,8 @@
   function formatFileMeta(raw) {
     var ext = FILE_TYPE_LABELS[raw.resourcetype] || "";
     var size = raw.resourcefilesize || "";
-    if (ext && size) return " (" + ext + " " + size + ")";
-    if (ext) return " (" + ext + ")";
+    if (ext && size) return " " + ext + " (" + size + ")";
+    if (ext) return " " + ext;
     if (size) return " (" + size + ")";
     return "";
   }
@@ -1032,9 +1033,11 @@
       $item.find('[data-ref="search-result-link"]').attr("href", assetUrl);
       $item
         .find('[data-ref="search-result-title"]')
-        .text(
-          (raw.resourcefriendlytitle || result.title || "") +
-            formatFileMeta(raw),
+        .html(
+          '<span class="doc-search-result__title-text">' +
+            escHtml(raw.resourcefriendlytitle || result.title || "") +
+            "</span>" +
+            formatFileMetaHtml(raw),
         );
 
       // External link icon — hidden
@@ -1119,8 +1122,7 @@
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
       var assetAssetId = raw.assetassetid || "";
-      var title =
-        (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
+      var titleText = raw.resourcefriendlytitle || result.title || "";
       var doctype = raw.resourcedoctype || "";
       var updated = formatDate(raw.resourceupdated);
 
@@ -1134,7 +1136,10 @@
           '<a class="doc-search-table__title-link" href="' +
           escAttr(assetUrl) +
           '">' +
-          escHtml(title) +
+          '<span class="doc-search-result__title-text">' +
+          escHtml(titleText) +
+          "</span>" +
+          formatFileMetaHtml(raw) +
           extIcon +
           "</a>" +
           "</td>" +
@@ -1323,6 +1328,21 @@
   }
 
   /**
+   * Returns an HTML string wrapping the formatFileMeta() suffix in a
+   * <span class="doc-search-result__file-meta"> so it can be styled smaller.
+   * Returns an empty string when there is no file type/size info.
+   * @param {Object} raw  result.raw from the Coveo API response.
+   * @returns {string}
+   */
+  function formatFileMetaHtml(raw) {
+    var plain = formatFileMeta(raw);
+    if (!plain) return "";
+    return (
+      '<span class="doc-search-result__file-meta">' + escHtml(plain) + "</span>"
+    );
+  }
+
+  /**
    * Encodes a plain string for safe use inside an HTML attribute value.
    * Extends escHtml by additionally escaping `"` (&quot;) and `'` (&#39;).
    * @param {string} str
@@ -1393,7 +1413,9 @@
             return res.json();
           })
           .then(function (data) {
-            masterResults = data.results || [];
+            masterResults = (data.results || []).filter(function (r) {
+              return (r.raw || {}).resourcedoctype !== EXCLUDED_DOCTYPE;
+            });
           })
           .catch(function () {
             /* non-critical — facets will fall back gracefully */
@@ -1409,7 +1431,9 @@
       .then(function (values) {
         var data = values[0];
         $spinner.addClass("d-none");
-        originalResults = data.results || [];
+        originalResults = (data.results || []).filter(function (r) {
+          return (r.raw || {}).resourcedoctype !== EXCLUDED_DOCTYPE;
+        });
 
         // In dev or when query is empty the single fetch IS the full corpus
         if (masterResults.length === 0) {
