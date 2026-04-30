@@ -6,6 +6,11 @@
  * request, then performs client-side filtering, sorting, and pagination.
  * Results are rendered by cloning a hidden .search-template element.
  *
+ * Results with raw.resourcedoctype === "Supporting document" are hard-excluded:
+ * they are filtered out of every result array (originalResults, masterResults) at
+ * API response ingestion time and never appear in search results, pagination
+ * counts, or facet filter lists. Change EXCLUDED_DOCTYPE to adjust this.
+ *
  * The Type and Category filter sidebars always show the complete list of values
  * from the full document corpus (masterResults), regardless of the active search
  * query. Only the count numbers beside each value change. Values with a count of
@@ -152,11 +157,14 @@
  * To add a new file type mapping, add an entry to FILE_TYPE_LABELS.
  *
  * ── MODULE STATE ─────────────────────────────────────────────────────────────
- *   masterResults         Array   — complete document corpus (all results for an empty query);
- *                                   populated once on the first runSearch() call and never cleared.
- *                                   Provides the stable value list for all facets so that Type and
- *                                   Category options do not disappear when a search query narrows
- *                                   the result set.
+ *   EXCLUDED_DOCTYPE      String  — resourcedoctype value hard-excluded from all result arrays
+ *                                   ("Supporting document"). Documents with this type are stripped
+ *                                   from originalResults and masterResults at ingestion time.
+ *   masterResults         Array   — complete document corpus (all results for an empty query),
+ *                                   excluding EXCLUDED_DOCTYPE documents. Populated once on the
+ *                                   first runSearch() call and never cleared. Provides the stable
+ *                                   value list for all facets so that Type and Category options
+ *                                   do not disappear when a search query narrows the result set.
  *   originalResults       Array   — raw API response order for the current query;
  *                                   restored as allResults when sort = "relevancy"
  *   allResults            Array   — current display order (sorted copy of originalResults)

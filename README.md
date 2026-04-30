@@ -145,6 +145,7 @@ This CommonJS Node.js script is the sole source of truth for both generated HTML
 - **Back-to-search link** — each collection page renders `<a href="../index.html" onclick="if(history.length>1){history.back();return false;}">`. This uses browser history if available; otherwise navigates to `index.html`.
 - **Related policies** — the "Related policies" section on each collection page links to all sibling collection pages (all except the current one) using relative `slug.html` hrefs.
 - **Document grouping** — within each collection, results are grouped by `raw.resourcedoctype` (e.g. "Policy", "Procedure") and rendered as `<section class="policy-documents">` blocks.
+- **Excluded document types** — results with `raw.resourcedoctype === "Supporting document"` are skipped during the collection map build. They do not appear on any collection page. The same type is excluded at runtime in `coveo-search.js` via the `EXCLUDED_DOCTYPE` constant.
 - **Google Analytics removal** — the script strips the `<script async src="https://www.googletagmanager.com/gtag/...">` block from `index.html` (GitHub Pages is a public preview, not a tracked environment).
 
 To regenerate the collection slugs or add new collections, update `src/mock/coveo-search-rest-api-query.json` and run `npm run build`.
@@ -174,7 +175,7 @@ This runs whenever `window.location.hostname` is `localhost`, `127.0.0.1`, or en
 | Collection pages | Static HTML (generated from mock) | Dynamic Matrix pages  |
 | Purpose          | Development preview and demos     | Live intranet service |
 
-> GitHub Pages is a **preview environment**, not a production mirror. It always serves the same 43 mock results regardless of query, and collection page data is baked in at build time.
+> GitHub Pages is a **preview environment**, not a production mirror. It always serves the same mock results regardless of query, and collection page data is baked in at build time. Documents with `resourcedoctype` of `"Supporting document"` are excluded from both search results and collection pages.
 
 ---
 
@@ -218,7 +219,7 @@ Run `npm run build` once before committing to ensure `dist/` reflects the final 
 
 | Environment                               | Data source                                                             |
 | ----------------------------------------- | ----------------------------------------------------------------------- |
-| `localhost` / `127.0.0.1`                 | `src/mock/coveo-search-rest-api-query.json` (43 results, no VPN needed) |
+| `localhost` / `127.0.0.1`                 | `src/mock/coveo-search-rest-api-query.json` (34 results, no VPN needed) |
 |                                           | `src/mock/matrix-asset-links.json` (page links, no VPN needed)          |
 | `*.github.io` (GitHub Pages)              | `src/mock/coveo-search-rest-api-query.json` (same mock data, no VPN)    |
 |                                           | `src/mock/matrix-asset-links.json` (same mock page links, no VPN)       |
