@@ -805,7 +805,7 @@ The results area. Deployed as a separate Matrix nested container. Contains:
 
 `src/css/search-widget.css` compiles to `dist/search-page.css`. It imports `src/css/tokens.css` at the top (`@import "./tokens.css";`) — do not re-declare `:root` inside this file. All design tokens live in `tokens.css` (see the [CSS Token System](#css-token-system) section above).
 
-The document title suffix is rendered as `FILETYPE (filesize)` and is wrapped in a separate `.doc-search-result__file-meta` span so it can appear smaller and without an underline when the title link is underlined. The file meta also receives a left margin to separate it from the title text.
+The document title suffix is rendered as `FILETYPE (filesize)` and is wrapped in a separate `.doc-search-result__file-meta` span so it can appear smaller and without an underline when the title link is underlined. The file meta also receives a small left margin (`8px`) to separate it from the title text.
 
 ### Internal card spacing
 
