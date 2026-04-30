@@ -321,7 +321,7 @@ tr.doc-search-row--moving {
   font-weight: var(--font-weight-normal);
   color: var(--clr-text-alt);
   text-decoration: none !important;
-  margin-left: 16px;
+  margin-left: 8px;
 }
 
 .doc-search-result__ext-icon {
