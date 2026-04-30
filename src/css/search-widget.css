@@ -318,7 +318,7 @@ tr.doc-search-row--moving {
 .doc-search-result__file-meta {
   display: inline-block;
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-regular);
   color: var(--clr-text-alt);
   text-decoration: none !important;
   margin-left: 8px;
