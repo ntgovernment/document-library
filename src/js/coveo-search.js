@@ -108,9 +108,13 @@
  *                                        title text includes formatFileMeta() suffix
  *   .doc-search-table__col-updated     last-updated plain text
  *   .doc-search-table__col-type        doctype — <span class="doc-search-table__tag"> or empty
- *   .doc-search-table__col-collection  collection — <a class="doc-search-table__collection-link">
- *                                        href = raw.collectionurl
- *                                        text = raw.collectionname
+ *   .doc-search-table__col-collection  pages — comma-separated <a> links to parent intranet
+ *                                        pages, resolved asynchronously from the Squiz Matrix
+ *                                        Management API (same chain as the card view's page row).
+ *                                        Initially shows "Loading\u2026" when raw.assetassetid is
+ *                                        present; populated empty when no pages are resolved or
+ *                                        when raw.assetassetid is absent. Pages whose URL path
+ *                                        contains "/news/", "/dev/", or "archive" are excluded.
  *
  * Facet items (built by buildFacet into #doc-search-type-filters / #doc-search-category-filters):
  *   input[data-facet][data-value]       checkbox; data-facet = raw field name, data-value = raw value
@@ -220,6 +224,13 @@
   var MATRIX_MOCK_URL = "./src/mock/matrix-asset-links.json";
   var matrixMockCache = null;
 
+  // Per-page-load cache of resolved page-link Promises, keyed by assetId.
+  // Both card and table renders call resolvePageLinks(assetId), which returns
+  // the cached Promise on subsequent calls — so pagination, sorting, filtering,
+  // and switching between card/table view never re-fetch the same data.
+  // Cleared at the start of every runSearch() to avoid stale data across queries.
+  var pageLinksCache = {};
+
   /**
    * Fetch wrapper for the Squiz Matrix Management API.
    * Sets the Authorization header with the bearer token.
@@ -321,6 +332,183 @@
       });
       return result;
     });
+  }
+
+  /**
+   * Resolves the full chain of upstream page links for a document asset and
+   * returns a deduplicated, filtered list of {name, path} objects suitable for
+   * rendering as <a> tags. Pages whose URL path contains "/news/", "/dev/", or
+   * "archive" (case-insensitive) are excluded.
+   *
+   * Results are memoized in `pageLinksCache` for the lifetime of the page load.
+   * Concurrent calls for the same assetId share the same in-flight Promise, so
+   * pagination, sorting, filtering, and view switching never trigger a re-fetch.
+   * The cache is reset at the start of every runSearch() call.
+   *
+   * Resolution chain:
+   *   1. fetchPageLinks(assetId)            → upstream links
+   *   2. filter link_type === "reference"   → refMajorIds
+   *   3. fetchPageLinks(ref) for each ref   → childLinks; filter "hidden" ids
+   *   4. matrixApiFetch("assets/{hid}")     → hidden asset details
+   *   5. attributes.name === "Page Contents"→ fetch parent (major_id - 1)
+   *   6. extract attributes.short_name (or name) and urls[0].path
+   *
+   * @param {string} assetId  raw.assetassetid for the document.
+   * @returns {Promise<Array<{name: string, path: string}>>}
+   */
+  function resolvePageLinks(assetId) {
+    if (!assetId) return Promise.resolve([]);
+    if (pageLinksCache[assetId]) return pageLinksCache[assetId];
+    var promise = resolvePageLinksUncached(assetId);
+    pageLinksCache[assetId] = promise;
+    return promise;
+  }
+
+  /**
+   * Pre-warms the page-links cache for every result in `results` by kicking
+   * off a `resolvePageLinks()` call for each unique `raw.assetassetid`. All
+   * fetches run in parallel in the background; subsequent calls from
+   * renderCardResults() / renderTableResults() reuse the cached Promises
+   * (and most will already be resolved by the time the user paginates,
+   * sorts, filters, or switches view).
+   *
+   * @param {Array} results  Coveo result objects (e.g. originalResults).
+   */
+  function prefetchPageLinks(results) {
+    if (!Array.isArray(results)) return;
+    results.forEach(function (r) {
+      var id = (r.raw || {}).assetassetid;
+      if (id && !pageLinksCache[id]) {
+        // Fire and forget — the call populates the cache via resolvePageLinks().
+        resolvePageLinks(id);
+      }
+    });
+  }
+
+  /**
+   * Internal: performs the actual upstream-link resolution chain.
+   * Use resolvePageLinks() instead, which adds caching.
+   * @param {string} assetId
+   * @returns {Promise<Array<{name: string, path: string}>>}
+   */
+  function resolvePageLinksUncached(assetId) {
+    return fetchPageLinks(assetId).then(function (links) {
+      var refIds = getPageMajorIds(links);
+      if (!refIds.length) return [];
+      return Promise.all(
+        refIds.map(function (id) {
+          return fetchPageLinks(id).then(function (childLinks) {
+            var hiddenIds = childLinks
+              .filter(function (l) {
+                return l.link_type === "hidden";
+              })
+              .map(function (l) {
+                return l.major_id;
+              });
+            var assetFetches = hiddenIds.length
+              ? Promise.all(
+                  hiddenIds.map(function (hid) {
+                    return (
+                      isDev
+                        ? Promise.resolve({
+                            id: hid,
+                            name: "(mock asset " + hid + ")",
+                          })
+                        : matrixApiFetch("assets/" + hid)
+                    )
+                      .then(function (asset) {
+                        return { major_id: hid, asset: asset };
+                      })
+                      .catch(function () {
+                        return { major_id: hid, asset: null };
+                      });
+                  }),
+                )
+              : Promise.resolve([]);
+            return assetFetches.then(function (assets) {
+              var pageContentAssets = assets.filter(function (a) {
+                return (
+                  a.asset &&
+                  a.asset.attributes &&
+                  a.asset.attributes.name === "Page Contents"
+                );
+              });
+              var parentFetches = pageContentAssets.length
+                ? Promise.all(
+                    pageContentAssets.map(function (a) {
+                      var parentId = String(Number(a.major_id) - 1);
+                      return (
+                        isDev
+                          ? Promise.resolve({
+                              id: parentId,
+                              name: "(mock asset " + parentId + ")",
+                            })
+                          : matrixApiFetch("assets/" + parentId)
+                      )
+                        .then(function (asset) {
+                          return { major_id: parentId, asset: asset };
+                        })
+                        .catch(function () {
+                          return { major_id: parentId, asset: null };
+                        });
+                    }),
+                  )
+                : Promise.resolve([]);
+              return parentFetches.then(function (parents) {
+                return { page_contents_parents: parents };
+              });
+            });
+          });
+        }),
+      ).then(function (results) {
+        var seen = {};
+        var out = [];
+        results.forEach(function (r) {
+          (r.page_contents_parents || []).forEach(function (p) {
+            if (
+              p.asset &&
+              p.asset.attributes &&
+              p.asset.urls &&
+              p.asset.urls.length
+            ) {
+              var name =
+                p.asset.attributes.short_name || p.asset.attributes.name || "";
+              var path = p.asset.urls[0].path || "";
+              var lowerPath = path.toLowerCase();
+              var isExcluded =
+                lowerPath.indexOf("/news/") !== -1 ||
+                lowerPath.indexOf("/dev/") !== -1 ||
+                lowerPath.indexOf("archive") !== -1;
+              if (name && path && !isExcluded && !seen[path]) {
+                seen[path] = true;
+                out.push({ name: name, path: path });
+              }
+            }
+          });
+        });
+        return out;
+      });
+    });
+  }
+
+  /**
+   * Builds a comma-separated HTML string of <a> links from the resolved
+   * page-link list returned by resolvePageLinks().
+   * @param {Array<{name: string, path: string}>} pageLinks
+   * @returns {string}  HTML; empty string when pageLinks is empty.
+   */
+  function renderPageLinksHtml(pageLinks) {
+    return pageLinks
+      .map(function (p) {
+        return (
+          '<a href="https://' +
+          $("<span>").text(p.path).html() +
+          '">' +
+          $("<span>").text(p.name).html() +
+          "</a>"
+        );
+      })
+      .join(", ");
   }
 
   /**
@@ -878,135 +1066,27 @@
       // Page row — async fetch of upstream reference links
       var assetAssetId = raw.assetassetid || "";
       if (assetAssetId) {
-        (function ($card, cardAssetId) {
+        (function ($card) {
           var $pageRow = $card.find('[data-ref="search-result-page-row"]');
           $pageRow.removeAttr("hidden");
           $card
             .find('[data-ref="search-result-page-ids"]')
             .text("Loading\u2026");
-          fetchPageLinks(cardAssetId).then(function (links) {
-            var refIds = getPageMajorIds(links);
-            if (!refIds.length) {
+          resolvePageLinks(assetAssetId).then(function (pageLinks) {
+            if (!pageLinks.length) {
               $pageRow.attr("hidden", true);
               return;
             }
-            Promise.all(
-              refIds.map(function (id) {
-                return fetchPageLinks(id).then(function (childLinks) {
-                  // Find hidden link_type entries and fetch asset details
-                  var hiddenIds = childLinks
-                    .filter(function (l) {
-                      return l.link_type === "hidden";
-                    })
-                    .map(function (l) {
-                      return l.major_id;
-                    });
-                  var assetFetches = hiddenIds.length
-                    ? Promise.all(
-                        hiddenIds.map(function (hid) {
-                          return (
-                            isDev
-                              ? Promise.resolve({
-                                  id: hid,
-                                  name: "(mock asset " + hid + ")",
-                                })
-                              : matrixApiFetch("assets/" + hid)
-                          )
-                            .then(function (asset) {
-                              return { major_id: hid, asset: asset };
-                            })
-                            .catch(function () {
-                              return { major_id: hid, asset: null };
-                            });
-                        }),
-                      )
-                    : Promise.resolve([]);
-                  return assetFetches.then(function (assets) {
-                    // Check hidden assets for "Page Contents" — if found, fetch major_id - 1
-                    var pageContentAssets = assets.filter(function (a) {
-                      return (
-                        a.asset &&
-                        a.asset.attributes &&
-                        a.asset.attributes.name === "Page Contents"
-                      );
-                    });
-                    var parentFetches = pageContentAssets.length
-                      ? Promise.all(
-                          pageContentAssets.map(function (a) {
-                            var parentId = String(Number(a.major_id) - 1);
-                            return (
-                              isDev
-                                ? Promise.resolve({
-                                    id: parentId,
-                                    name: "(mock asset " + parentId + ")",
-                                  })
-                                : matrixApiFetch("assets/" + parentId)
-                            )
-                              .then(function (asset) {
-                                return { major_id: parentId, asset: asset };
-                              })
-                              .catch(function () {
-                                return { major_id: parentId, asset: null };
-                              });
-                          }),
-                        )
-                      : Promise.resolve([]);
-                    return parentFetches.then(function (parents) {
-                      return {
-                        major_id: id,
-                        links: childLinks,
-                        hidden_assets: assets,
-                        page_contents_parents: parents,
-                      };
-                    });
-                  });
-                });
-              }),
-            ).then(function (results) {
-              // Collect all page_contents_parents across reference chains
-              var seen = {};
-              var links = [];
-              results.forEach(function (r) {
-                (r.page_contents_parents || []).forEach(function (p) {
-                  if (
-                    p.asset &&
-                    p.asset.attributes &&
-                    p.asset.urls &&
-                    p.asset.urls.length
-                  ) {
-                    var name =
-                      p.asset.attributes.short_name ||
-                      p.asset.attributes.name ||
-                      "";
-                    var path = p.asset.urls[0].path || "";
-                    if (name && path && !seen[path]) {
-                      seen[path] = true;
-                      links.push(
-                        '<a href="https://' +
-                          $("<span>").text(path).html() +
-                          '">' +
-                          $("<span>").text(name).html() +
-                          "</a>",
-                      );
-                    }
-                  }
-                });
-              });
-              if (links.length) {
-                if (links.length > 1) {
-                  $card
-                    .find('[data-ref="search-result-page-label"]')
-                    .text("Pages:");
-                }
-                $card
-                  .find('[data-ref="search-result-page-ids"]')
-                  .html(links.join(", "));
-              } else {
-                $pageRow.attr("hidden", true);
-              }
-            });
+            if (pageLinks.length > 1) {
+              $card
+                .find('[data-ref="search-result-page-label"]')
+                .text("Pages:");
+            }
+            $card
+              .find('[data-ref="search-result-page-ids"]')
+              .html(renderPageLinksHtml(pageLinks));
           });
-        })($item, assetAssetId);
+        })($item);
       }
 
       // Doctype tag
@@ -1038,8 +1118,7 @@
     results.forEach(function (result) {
       var raw = result.raw || {};
       var assetUrl = raw.asseturl || result.clickUri || "#";
-      var collectionName = raw.collectionname || "";
-      var collectionUrl = localiseCollectionUrl(raw.collectionurl) || "#";
+      var assetAssetId = raw.assetassetid || "";
       var title =
         (raw.resourcefriendlytitle || result.title || "") + formatFileMeta(raw);
       var doctype = raw.resourcedoctype || "";
@@ -1047,14 +1126,7 @@
 
       var extIcon = "";
 
-      var collectionCell =
-        collectionName && collectionName !== "none"
-          ? '<a class="doc-search-table__collection-link" href="' +
-            escAttr(collectionUrl) +
-            '">' +
-            escHtml(collectionName) +
-            "</a>"
-          : "";
+      var pagesCellInitial = assetAssetId ? "Loading\u2026" : "";
 
       var $row = $(
         "<tr>" +
@@ -1076,8 +1148,8 @@
               "</span>"
             : "") +
           "</td>" +
-          '<td class="doc-search-table__col-collection">' +
-          collectionCell +
+          '<td class="doc-search-table__col-collection doc-search-table__col-pages">' +
+          escHtml(pagesCellInitial) +
           "</td>" +
           "</tr>",
       );
@@ -1088,6 +1160,15 @@
         $row.addClass("doc-search-row--entering");
       }
       $tbody.append($row);
+
+      // Async populate the Pages cell from the Squiz Matrix Management API.
+      if (assetAssetId) {
+        (function ($cell) {
+          resolvePageLinks(assetAssetId).then(function (pageLinks) {
+            $cell.html(renderPageLinksHtml(pageLinks));
+          });
+        })($row.find(".doc-search-table__col-pages"));
+      }
     });
   }
 
@@ -1297,6 +1378,9 @@
     $summary.empty();
     setUserMessage("");
 
+    // Reset the page-links cache so a new query doesn't reuse stale results.
+    pageLinksCache = {};
+
     var searchUrl = isDev ? MOCK_URL : buildCoveoUrl(query);
 
     // In production, when a non-empty query is used and we don't yet have the full
@@ -1331,6 +1415,11 @@
         if (masterResults.length === 0) {
           masterResults = originalResults.slice();
         }
+
+        // Pre-warm the page-links cache in parallel for every result so card
+        // and table renders never block on a fetch and pagination/sort/filter/
+        // view-switching can read from cache instantly.
+        prefetchPageLinks(originalResults);
 
         applySort();
 
