@@ -239,6 +239,47 @@
   // Cleared at the start of every runSearch() to avoid stale data across queries.
   var pageLinksCache = {};
 
+  // localStorage key prefix for persisting resolved page-link arrays across
+  // page loads. Each value is a JSON-stringified Array<{name, path}>.
+  var PAGE_LINKS_STORAGE_PREFIX = "dcdd-page-links:";
+
+  /**
+   * Reads a previously resolved page-link array for an assetId from
+   * localStorage. Returns null when no entry exists, when localStorage is
+   * unavailable (e.g. private browsing), or when the stored value is invalid.
+   * @param {string} assetId
+   * @returns {Array<{name: string, path: string}>|null}
+   */
+  function loadPageLinksFromStorage(assetId) {
+    try {
+      var raw = window.localStorage.getItem(
+        PAGE_LINKS_STORAGE_PREFIX + assetId,
+      );
+      if (raw == null) return null;
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Persists a resolved page-link array for an assetId to localStorage.
+   * Silently no-ops when localStorage is unavailable or the quota is exceeded.
+   * @param {string} assetId
+   * @param {Array<{name: string, path: string}>} pageLinks
+   */
+  function savePageLinksToStorage(assetId, pageLinks) {
+    try {
+      window.localStorage.setItem(
+        PAGE_LINKS_STORAGE_PREFIX + assetId,
+        JSON.stringify(pageLinks),
+      );
+    } catch (e) {
+      /* localStorage disabled or full — skip persistence */
+    }
+  }
+
   /**
    * Fetch wrapper for the Squiz Matrix Management API.
    * Sets the Authorization header with the bearer token.
@@ -367,7 +408,23 @@
   function resolvePageLinks(assetId) {
     if (!assetId) return Promise.resolve([]);
     if (pageLinksCache[assetId]) return pageLinksCache[assetId];
-    var promise = resolvePageLinksUncached(assetId);
+
+    // localStorage hit (production only — in dev the static mock JSON is
+    // already cached in memory by fetchPageLinks(), so persisting it adds
+    // no benefit and would clutter the developer's storage).
+    if (!isDev) {
+      var stored = loadPageLinksFromStorage(assetId);
+      if (stored) {
+        var resolvedPromise = Promise.resolve(stored);
+        pageLinksCache[assetId] = resolvedPromise;
+        return resolvedPromise;
+      }
+    }
+
+    var promise = resolvePageLinksUncached(assetId).then(function (pageLinks) {
+      if (!isDev) savePageLinksToStorage(assetId, pageLinks);
+      return pageLinks;
+    });
     pageLinksCache[assetId] = promise;
     return promise;
   }
