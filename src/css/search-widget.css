@@ -1027,7 +1027,6 @@ tr.doc-search-row--moving {
 
 .doc-search-no-results__heading {
   font-size: 20px !important;
-  font-weight: 400 !important;
   font-family: Roboto, sans-serif !important;
   line-height: 24px !important;
   color: var(--clr-text-default, #102040) !important;

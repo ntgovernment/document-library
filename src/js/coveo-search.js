@@ -2330,7 +2330,7 @@ import mockSources from "../mock/sources.json";
       '<ul class="doc-search-no-results__tips">' +
       "<li>Check your spelling</li>" +
       "<li>Try another term</li>" +
-      "<li>Use less filters</li>" +
+      "<li>Use less filters.</li>" +
       "</ul>" +
       "</div>" +
       "</div>"
