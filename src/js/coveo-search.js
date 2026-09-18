@@ -1249,7 +1249,12 @@ import mockSources from "../mock/sources.json";
       left = Math.min(Math.max(sidebarRect.left, viewportMargin), maxLeft);
     }
 
-    $toast.css({ left: left + "px", right: "auto", top: "auto", bottom: viewportMargin + "px" });
+    $toast.css({
+      left: left + "px",
+      right: "auto",
+      top: "auto",
+      bottom: viewportMargin + "px",
+    });
 
     if (!footerEl) {
       return;
@@ -1260,7 +1265,10 @@ import mockSources from "../mock/sources.json";
       return;
     }
 
-    var top = Math.max(viewportMargin, footerRect.top - toastEl.offsetHeight - viewportMargin);
+    var top = Math.max(
+      viewportMargin,
+      footerRect.top - toastEl.offsetHeight - viewportMargin,
+    );
     $toast.css({ top: top + "px", bottom: "auto" });
   }
 
@@ -1816,7 +1824,9 @@ import mockSources from "../mock/sources.json";
 
     // Toggle UI elements based on whether results exist
     toggleNoResultsState(filteredResults.length);
-    setUserMessage(filteredResults.length === 0 ? buildNoResultsHtml(currentQuery) : "");
+    setUserMessage(
+      filteredResults.length === 0 ? buildNoResultsHtml(currentQuery) : "",
+    );
     syncViewToggleState();
     updateResultsSummary();
     if (options.showToast) {
@@ -2297,19 +2307,35 @@ import mockSources from "../mock/sources.json";
    * @returns {string} HTML string for the no-results state.
    */
   function buildNoResultsHtml(query) {
+    var resetUrl = "https://internal.nt.gov.au/dcdd/policy";
+    var webpageSearchUrl =
+      "https://internal.nt.gov.au/dcdd/search?searchterm=" +
+      encodeURIComponent(query);
+
     return (
       '<div class="doc-search-no-results" data-state="No result">' +
       '<div class="doc-search-no-results__inner">' +
-      '<h2 class="doc-search-no-results__heading">No results</h2>' +
-      '<p class="doc-search-no-results__detail">There were no results for <strong>' +
+      '<h2 class="doc-search-no-results__heading">0 results for “<strong>' +
       escHtml(query) +
-      "</strong></p>" +
-      '<p class="doc-search-no-results__suggestion">Try refining your search with some different key words</p>' +
+      "</strong>”</h2>" +
+      '<p class="doc-search-no-results__detail">' +
+      '<a href="' +
+      escAttr(resetUrl) +
+      '">Reset your search</a> or ' +
+      '<a href="' +
+      escAttr(webpageSearchUrl) +
+      '">expand search to include webpages</a>.' +
+      "</p>" +
+      '<p class="doc-search-no-results__suggestion">Tips:</p>' +
+      '<ul class="doc-search-no-results__tips">' +
+      "<li>Check your spelling</li>" +
+      "<li>Try another term</li>" +
+      "<li>Use less filters</li>" +
+      "</ul>" +
       "</div>" +
       "</div>"
     );
   }
-
   /**
    * Toggles result-specific controls based on result count while keeping the
    * desktop filter sidebar available to refine a zero-result selection.
