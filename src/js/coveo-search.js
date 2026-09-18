@@ -2307,17 +2307,23 @@ import mockSources from "../mock/sources.json";
    * @returns {string} HTML string for the no-results state.
    */
   function buildNoResultsHtml(query) {
+    var trimmedQuery = $.trim(query || "");
     var resetUrl = "https://internal.nt.gov.au/dcdd/policy";
     var webpageSearchUrl =
       "https://internal.nt.gov.au/dcdd/search?searchterm=" +
-      encodeURIComponent(query);
+      encodeURIComponent(trimmedQuery);
+    var heading = trimmedQuery
+      ? '0 results for “<strong>' +
+        escHtml(trimmedQuery) +
+        "</strong>”"
+      : "0 results";
 
     return (
       '<div class="doc-search-no-results" data-state="No result">' +
       '<div class="doc-search-no-results__inner">' +
-      '<h2 class="doc-search-no-results__heading">0 results for “<strong>' +
-      escHtml(query) +
-      "</strong>”</h2>" +
+      '<h2 class="doc-search-no-results__heading">' +
+      heading +
+      "</h2>" +
       '<p class="doc-search-no-results__detail">You can ' +
       '<a href="' +
       escAttr(resetUrl) +
