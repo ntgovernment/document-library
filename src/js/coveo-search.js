@@ -2321,7 +2321,7 @@ import mockSources from "../mock/sources.json";
       '<p class="doc-search-no-results__detail">You can ' +
       '<a href="' +
       escAttr(resetUrl) +
-      '">Reset your search</a> or ' +
+      '">reset your search</a> or ' +
       '<a href="' +
       escAttr(webpageSearchUrl) +
       '">expand search to include webpages</a>.' +
