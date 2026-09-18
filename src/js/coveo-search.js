@@ -2318,7 +2318,7 @@ import mockSources from "../mock/sources.json";
       '<h2 class="doc-search-no-results__heading">0 results for “<strong>' +
       escHtml(query) +
       "</strong>”</h2>" +
-      '<p class="doc-search-no-results__detail">' +
+      '<p class="doc-search-no-results__detail">You can ' +
       '<a href="' +
       escAttr(resetUrl) +
       '">Reset your search</a> or ' +

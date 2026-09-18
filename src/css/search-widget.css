@@ -1027,11 +1027,20 @@ tr.doc-search-row--moving {
 
 .doc-search-no-results__heading {
   font-size: 20px !important;
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   font-family: Roboto, sans-serif !important;
   line-height: 24px !important;
   color: var(--clr-text-default, #102040) !important;
   margin: 0 !important;
+}
+
+.doc-search-no-results__heading strong {
+  font-weight: 700;
+}
+
+.doc-search-no-results__tips {
+  margin: 0;
+  padding-left: 40px;
 }
 
 .doc-search-no-results__detail {
